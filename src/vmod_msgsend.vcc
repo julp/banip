@@ -1,0 +1,9 @@
+#Module msgsend
+#Init init_function
+#Function VOID init_msgsend(PRIV_VCL, STRING)
+#Function VOID msgsend(PRIV_VCL, STRING)
+
+$Module msgsend
+
+$Object mqueue(STRING)
+$Method VOID .sendmsg(STRING)
