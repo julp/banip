@@ -50,9 +50,15 @@ static void usage(void) {
 
 static FILE *err_file = NULL;
 
-static void _verrx(int code, const char *fmt, va_list ap)
+#define errx(fmt, ...)  _verr(1, 0, fmt, ## __VA_ARGS__)
+#define errc(fmt, ...)  _verr(1, errno, fmt, ## __VA_ARGS__)
+#define warnc(fmt, ...) _verr(0, errno, fmt, ## __VA_ARGS__)
+#define warn(fmt, ...)  _verr(0, 0, fmt, ## __VA_ARGS__)
+
+static void _verr(int fatal, int errcode, const char *fmt, ...)
 {
     time_t t;
+    va_list ap;
     char buf[STR_SIZE("yyyy-mm-dd hh:mm:ss")];
     struct tm *tm;
 
@@ -66,47 +72,20 @@ static void _verrx(int code, const char *fmt, va_list ap)
     }
     fprintf(err_file, "[%s] %s: ", buf, __progname);
     if (NULL != fmt) {
+        va_start(ap, fmt);
         vfprintf(err_file, fmt, ap);
-        if (code) {
+        va_end(ap);
+        if (errcode) {
             fprintf(err_file, ": ");
         }
     }
-    if (code) {
-        fputs(strerror(code), err_file);
+    if (errcode) {
+        fputs(strerror(errcode), err_file);
     }
     fprintf(err_file, "\n");
-    exit(PFBAN_EXIT_FAILURE);
-}
-
-static void errx(const char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    _verrx(0, fmt, ap);
-    va_end(ap);
-}
-
-static void errc(const char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    _verrx(errno, fmt, ap);
-    va_end(ap);
-}
-
-static void warn(const char *fmt, ...)
-{
-    va_list ap;
-
-    fprintf(err_file, "%s: ", __progname);
-    va_start(ap, fmt);
-    if (NULL != fmt) {
-        vfprintf(err_file, fmt, ap);
+    if (fatal) {
+        exit(PFBAN_EXIT_FAILURE);
     }
-    va_end(ap);
-    fprintf(err_file, "\n");
 }
 
 static int parse_long(const char *str, long *val)
@@ -149,22 +128,22 @@ static void cleanup(void)
     }
     if (-1 != dev) {
         if (0 != close(dev)) {
-            warn/*c?*/("closing /dev/pf failed");
+            warnc("closing /dev/pf failed");
         }
         dev = -1;
     }
     if (((mqd_t) -1) != (mq)) {
         if (0 != mq_close(mq)) {
-            warn/*c?*/("mq_close failed");
+            warnc("mq_close failed");
         }
         if (0 != mq_unlink(queuename)) {
-            warn/*c?*/("mq_unlink failed");
+            warnc("mq_unlink failed");
         }
         mq = (mqd_t) -1;
     }
     if (NULL != pidfilename) {
         if (0 != unlink(pidfilename)) {
-            warn/*c*/("mq_unlink failed");
+            warnc("mq_unlink failed");
         }
     }
     if (NULL != err_file && fileno(err_file) > 2) {
@@ -244,7 +223,7 @@ int main(int argc, char **argv)
                 logfilename = optarg;
                 if (NULL == (err_file = fopen(logfilename, "a"))) {
                     err_file = NULL;
-                    warn/*c*/("fopen '%s' failed, falling back to stderr", logfilename);
+                    warnc("fopen '%s' failed, falling back to stderr", logfilename);
                 }
                 break;
             }
@@ -289,7 +268,7 @@ int main(int argc, char **argv)
         FILE *fp;
 
         if (NULL == (fp = fopen(pidfilename, "w"))) {
-            warn/*c*/("can't create pid file '%s'", pidfilename);
+            warnc("can't create pid file '%s'", pidfilename);
         } else {
             fprintf(fp, "%ld\n", (long) getpid());
             fclose(fp);
