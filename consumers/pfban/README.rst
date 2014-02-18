@@ -7,6 +7,8 @@ DESCRIPTION
 
 -v            verbose
 -d            daemonize
+-l <filename> logfile (default: stderr)
+-p <filename> pidfile (default: none)
 -g <group>    group to run as
 -b <size>     maximum messages size (in bytes)
 -s <size>     maximum messages in queue
@@ -39,6 +41,14 @@ BEST PRACTICES
     # Deny all suspicious hosts
     block quick from <blacklist>
     # ...
+
+- send USR1 signal when rotating log
+
+/etc/newsyslog.conf:
+
+::
+
+    /.../pfban.log root:wheel 600 <other attributes> /.../pfban.pid 30
 
 
 VCL EXAMPLE

@@ -36,7 +36,7 @@ enum {
 
 extern char *__progname;
 
-static char optstr[] = "b:dg:hl:s:v";
+static char optstr[] = "b:dg:hl:p:s:v";
 
 static void usage(void) {
     fprintf(
@@ -139,6 +139,7 @@ static int dev = -1;
 static char *buffer = NULL;
 static mqd_t mq = (mqd_t) -1;
 static const char *queuename = NULL;
+static const char *pidfilename = NULL;
 static const char *logfilename = NULL;
 
 static void cleanup(void)
@@ -149,18 +150,23 @@ static void cleanup(void)
     }
     if (-1 != dev) {
         if (0 != close(dev)) {
-            warn("closing /dev/pf failed");
+            warn/*c?*/("closing /dev/pf failed");
         }
         dev = -1;
     }
     if (((mqd_t) -1) != (mq)) {
         if (0 != mq_close(mq)) {
-            warn("mq_close failed");
+            warn/*c?*/("mq_close failed");
         }
         if (0 != mq_unlink(queuename)) {
-            warn("mq_unlink failed");
+            warn/*c?*/("mq_unlink failed");
         }
         mq = (mqd_t) -1;
+    }
+    if (NULL != pidfilename) {
+        if (0 != unlink(pidfilename)) {
+            warn/*c*/("mq_unlink failed");
+        }
     }
     if (NULL != err_file && fileno(err_file) > 2) {
         fclose(err_file);
@@ -239,8 +245,13 @@ int main(int argc, char **argv)
                 logfilename = optarg;
                 if (NULL == (err_file = fopen(logfilename, "a"))) {
                     err_file = NULL;
-                    warn("fopen '%s' failed, falling back to stderr", logfilename);
+                    warn/*c*/("fopen '%s' failed, falling back to stderr", logfilename);
                 }
+                break;
+            }
+            case 'p':
+            {
+                pidfilename = optarg;
                 break;
             }
             case 's':
@@ -273,6 +284,16 @@ int main(int argc, char **argv)
     if (dFlag) {
         if (0 != daemon(0, !vFlag)) {
             errc("daemon failed");
+        }
+    }
+    if (NULL != pidfilename) {
+        FILE *fp;
+
+        if (NULL == (fp = fopen(pidfilename, "w"))) {
+            warn/*c*/("can't create pid file '%s'", pidfilename);
+        } else {
+            fprintf(fp, "%ld\n", (long) getpid());
+            fclose(fp);
         }
     }
 
