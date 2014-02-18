@@ -107,7 +107,6 @@ static void warn(const char *fmt, ...)
     }
     va_end(ap);
     fprintf(err_file, "\n");
-    exit(PFBAN_EXIT_FAILURE);
 }
 
 static int parse_long(const char *str, long *val)
