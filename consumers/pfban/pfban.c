@@ -12,6 +12,7 @@
 #include <string.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -23,6 +24,10 @@
 #include <net/pfvar.h>
 #endif
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#define STR_LEN(str) (ARRAY_SIZE(str) - 1)
+#define STR_SIZE(str) (ARRAY_SIZE(str))
+
 enum {
     PFBAN_EXIT_SUCCESS = 0,
     PFBAN_EXIT_FAILURE,
@@ -31,7 +36,7 @@ enum {
 
 extern char *__progname;
 
-static char optstr[] = "b:dg:hs:v";
+static char optstr[] = "b:dg:hl:s:v";
 
 static void usage(void) {
     fprintf(
@@ -47,10 +52,19 @@ static FILE *err_file = NULL;
 
 static void _verrx(int code, const char *fmt, va_list ap)
 {
+    time_t t;
+    char buf[STR_SIZE("yyyy-mm-dd hh:mm:ss")];
+    struct tm *tm;
+
+    t = time(NULL);
+    tm = localtime(&t);
+    if (0 == strftime(buf, ARRAY_SIZE(buf), "%F %T", tm)) {
+        buf[0] = '\0';
+    }
     if (NULL == err_file) {
         err_file = stderr;
     }
-    fprintf(err_file, "%s: ", __progname);
+    fprintf(err_file, "[%s] %s: ", buf, __progname);
     if (NULL != fmt) {
         vfprintf(err_file, fmt, ap);
         if (code) {
@@ -123,8 +137,9 @@ static int parse_long(const char *str, long *val)
 
 static int dev = -1;
 static char *buffer = NULL;
-static const char *queuename;
 static mqd_t mq = (mqd_t) -1;
+static const char *queuename = NULL;
+static const char *logfilename = NULL;
 
 static void cleanup(void)
 {
@@ -147,11 +162,30 @@ static void cleanup(void)
         }
         mq = (mqd_t) -1;
     }
+    if (NULL != err_file && fileno(err_file) > 2) {
+        fclose(err_file);
+        err_file = NULL;
+    }
 }
 
-static void on_sigint(int signo)
+static void on_signal(int signo)
 {
-    cleanup();
+    switch (signo) {
+        case SIGINT:
+            cleanup();
+            break;
+        case SIGUSR1:
+            if (NULL != err_file && NULL != logfilename && fileno(err_file) > 2) {
+                if (NULL == (err_file = freopen(logfilename, "a", err_file))) {
+                    err_file = stderr;
+                    warn("freopen failed, falling back to stderr");
+                }
+            }
+            return;
+        default:
+            /* NOP */
+            break;
+    }
     signal(signo, SIG_DFL);
     kill(getpid(), signo);
 }
@@ -161,17 +195,21 @@ int main(int argc, char **argv)
     gid_t gid;
     mode_t omask;
     struct mq_attr attr;
+    struct sigaction sa;
     int c, dFlag, vFlag;
     const char *tablename;
 
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
-    /* default hardcoded value in FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
+    /* default hardcoded values in FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = 1024;
     atexit(cleanup);
-    signal(SIGINT, on_sigint);
+    sa.sa_handler = &on_signal;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGUSR1, &sa, NULL);
     while (-1 != (c = getopt(argc, argv, optstr))) {
         switch (c) {
             case 'b':
@@ -194,6 +232,15 @@ int main(int argc, char **argv)
                     errc("getgrnam failed");
                 }
                 gid = grp->gr_gid;
+                break;
+            }
+            case 'l':
+            {
+                logfilename = optarg;
+                if (NULL == (err_file = fopen(logfilename, "a"))) {
+                    err_file = NULL;
+                    warn("fopen '%s' failed, falling back to stderr", logfilename);
+                }
                 break;
             }
             case 's':
