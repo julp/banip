@@ -20,9 +20,10 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #ifdef __FreeBSD__
-#include <net/if.h>
-#include <net/pfvar.h>
+# include <net/if.h>
+# include <net/pfvar.h>
 #endif
+#include <netdb.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #define STR_LEN(str) (ARRAY_SIZE(str) - 1)
@@ -311,8 +312,12 @@ int main(int argc, char **argv)
             }
         } else {
 #ifdef __FreeBSD__
+            int ret;
             struct pfr_addr addr;
             struct pfioc_table io;
+            struct sockaddr last_src;
+            struct addrinfo *res, *resp;
+            struct pfioc_src_node_kill psnk;
 #endif
 
             warn("message received: %s\n", buffer);
@@ -333,8 +338,42 @@ int main(int argc, char **argv)
                 warn("Valid address expected, got: %s", buffer);
             }
             if (-1 == ioctl(dev, DIOCRADDADDRS, &io)) {
-                errc("ioctl failed");
+                errc("ioctl(DIOCRADDADDRS) failed");
             }
+#if 0
+            /* kill states */
+            memset(&psnk, 0, sizeof(psnk));
+            memset(&psnk.psnk_src.addr.v.a.mask, 0xff, sizeof(psnk.psnk_src.addr.v.a.mask));
+            memset(&last_src, 0xff, sizeof(last_src));
+            if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
+                errc("getaddrinfo failed");
+            }
+            for (resp = res; resp; resp = resp->ai_next) {
+                if (NULL == resp->ai_addr) {
+                    continue;
+                }
+                if (0 == memcmp(&last_src, resp->ai_addr, sizeof(last_src))) {
+                    continue;
+                }
+                last_src = *(struct sockaddr *)resp->ai_addr;
+                psnk.psnk_af = resp->ai_family;
+                switch (psnk.psnk_af) {
+                    case AF_INET:
+                        psnk.psnk_src.addr.v.a.addr.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
+                        break;
+                    case AF_INET6:
+                        psnk.psnk_src.addr.v.a.addr.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
+                        break;
+                    default:
+                        freeaddrinfo(res);
+                        errx("Unknown address family %d", psnk.psnk_af);
+                }
+                if (-1 == ioctl(dev, DIOCKILLSRCNODES, &psnk)) {
+                    errc("ioctl(DIOCKILLSRCNODES) failed");
+                }
+            }
+            freeaddrinfo(res);
+# endif
 #endif
         }
     }

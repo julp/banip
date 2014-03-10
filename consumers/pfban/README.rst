@@ -2,16 +2,19 @@
 pfban
 =====
 
-DESCRIPTION
-===========
+USAGE
+=====
 
--v            verbose
--d            daemonize
--l <filename> logfile (default: stderr)
--p <filename> pidfile (default: none)
--g <group>    group to run as
--b <size>     maximum messages size (in bytes)
--s <size>     maximum messages in queue
+::
+    pfban [options] <queue name> <PF table name>
+
+-v             verbose
+-d             daemonize
+-l <filename>  logfile (default: stderr)
+-p <filename>  pidfile (default: none)
+-g <group>     group to run as
+-b <size>      maximum messages size (in bytes)
+-s <size>      maximum messages in queue
 
 INSTALLATION
 ============

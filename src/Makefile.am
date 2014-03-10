@@ -26,4 +26,3 @@ EXTRA_DIST = \
 	$(VMOD_TESTS)
 
 CLEANFILES = $(builddir)/vcc_if.c $(builddir)/vcc_if.h
-
