@@ -15,19 +15,42 @@
 #include <time.h>
 
 #include <sys/types.h>
+/*
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+*/
+/*
 #ifdef __FreeBSD__
 # include <net/if.h>
 # include <net/pfvar.h>
+#else
+# include <linux/netfilter.h>
+# include <linux/netfilter/nf_tables.h>
+# include <libmnl/libmnl.h>
+# include <libnftnl/set.h>
 #endif
+*/
 #include <netdb.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #define STR_LEN(str) (ARRAY_SIZE(str) - 1)
 #define STR_SIZE(str) (ARRAY_SIZE(str))
+
+#include "engine.h"
+
+#ifdef WITH_PF
+extern engine_t pf_engine;
+#endif /* PF */
+
+#ifdef WITH_NPF
+extern engine_t npf_engine;
+#endif /* NPF */
+
+#ifdef WITH_NFTABLES
+extern engine_t nftables_engine;
+#endif /* NFTABLES */
 
 enum {
     PFBAN_EXIT_SUCCESS = 0,
@@ -56,7 +79,7 @@ static FILE *err_file = NULL;
 #define warnc(fmt, ...) _verr(0, errno, fmt, ## __VA_ARGS__)
 #define warn(fmt, ...)  _verr(0, 0, fmt, ## __VA_ARGS__)
 
-static void _verr(int fatal, int errcode, const char *fmt, ...)
+void _verr(int fatal, int errcode, const char *fmt, ...)
 {
     time_t t;
     va_list ap;
@@ -114,7 +137,17 @@ static int parse_long(const char *str, long *val)
     return 1;
 }
 
+/*
+#ifdef __FreeBSD__
 static int dev = -1;
+#else
+static uint32_t portid;
+static struct nft_set *s = NULL;
+static struct mnl_socket *nl = NULL;
+static struct nft_set_elem *e = NULL;
+#endif*/
+static void *ctxt = NULL;
+static engine_t *engine = NULL;
 static char *buffer = NULL;
 static mqd_t mq = (mqd_t) -1;
 static const char *queuename = NULL;
@@ -127,12 +160,26 @@ static void cleanup(void)
         free(buffer);
         buffer = NULL;
     }
+    if (NULL != ctxt) {
+        engine->close(ctxt);
+        free(ctxt);
+        ctxt = NULL;
+    }
+/*#ifdef __FreeBSD__
     if (-1 != dev) {
         if (0 != close(dev)) {
             warnc("closing /dev/pf failed");
         }
         dev = -1;
     }
+#else
+    if (NULL != s) {
+        nft_set_free(s);
+    }
+    if (NULL != nl) {
+        mnl_socket_close(nl);
+    }
+#endif*/
     if (((mqd_t) -1) != (mq)) {
         if (0 != mq_close(mq)) {
             warnc("mq_close failed");
@@ -175,6 +222,11 @@ static void on_signal(int signo)
     kill(getpid(), signo);
 }
 
+static void register_engine(const engine_t *engine)
+{
+    //
+}
+
 int main(int argc, char **argv)
 {
     gid_t gid;
@@ -183,7 +235,26 @@ int main(int argc, char **argv)
     struct sigaction sa;
     int c, dFlag, vFlag;
     const char *tablename;
+/*#ifndef __FreeBSD__
+    char buf[MNL_SOCKET_BUFFER_SIZE];
+#endif*/
 
+#ifdef WITH_PF
+//     register_engine(&pf_engine);
+    engine = &pf_engine;
+#endif /* PF */
+
+#ifdef WITH_NPF
+//     register_engine(&npf_engine);
+    engine = &npf_engine;
+#endif /* NPF */
+
+#ifdef WITH_NFTABLES
+//     register_engine(&nftables_engine);
+    engine = &nftables_engine;
+#endif /* NFTABLES */
+
+    ctxt = NULL;
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
@@ -276,11 +347,11 @@ int main(int argc, char **argv)
         }
     }
 
-#ifdef __FreeBSD__
+/*#ifdef __FreeBSD__
     if (-1 == (dev = open("/dev/pf", O_WRONLY))) {
         errc("failed opening /dev/pf");
     }
-#endif
+#endif*/
     if ((gid_t) -1 != gid) {
         if (0 != setgid(gid)) {
             errc("setgid failed");
@@ -300,6 +371,20 @@ int main(int argc, char **argv)
     if (NULL == (buffer = calloc(attr.mq_msgsize + 1, sizeof(*buffer)))) {
         errx("calloc failed");
     }
+/*#if LINUX
+    if (NULL == (nl = mnl_socket_open(NETLINK_GENERIC))) {
+        errc("mnl_socket_open failed");
+    }
+    if (mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID) < 0) {
+        errc("mnl_socket_bind failed");
+    }
+    portid = mnl_socket_get_portid(nl);
+    s = nft_set_alloc();
+    e = nft_set_elem_alloc();
+    nft_set_elem_add(s, e);
+    nft_set_attr_set(s, NFT_SET_ATTR_TABLE, "filter");
+#endif*/
+    ctxt = engine->open();
     while (1) {
         ssize_t read;
 
@@ -311,6 +396,8 @@ int main(int argc, char **argv)
                 errc("mq_receive failed");
             }
         } else {
+            engine->handle(ctxt, tablename, buffer);
+#if 0
 #ifdef __FreeBSD__
             int ret;
             struct pfr_addr addr;
@@ -340,7 +427,7 @@ int main(int argc, char **argv)
             if (-1 == ioctl(dev, DIOCRADDADDRS, &io)) {
                 errc("ioctl(DIOCRADDADDRS) failed");
             }
-#if 0
+# if 0
             /* kill states */
             memset(&psnk, 0, sizeof(psnk));
             memset(&psnk.psnk_src.addr.v.a.mask, 0xff, sizeof(psnk.psnk_src.addr.v.a.mask));
@@ -374,6 +461,42 @@ int main(int argc, char **argv)
             }
             freeaddrinfo(res);
 # endif
+#else
+            int ret;
+            struct in_addr addr4;
+            struct in6_addr addr6;
+            struct nlmsghdr *nlh;
+            uint32_t seq, family, data;
+
+            seq = time(NULL);
+            if (1 == inet_pton(AF_INET, buffer, &addr4)) {
+                family = NFPROTO_IPV4;
+                nft_set_attr_set(s, NFT_SET_ATTR_NAME, tablename);
+                nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &addr4, sizeof(addr4));
+            } else if (1 == inet_pton(AF_INET6, buffer, &addr6)) {
+                family = NFPROTO_IPV6;
+                nft_set_attr_set(s, NFT_SET_ATTR_NAME, tablename); // TODO: le nom doit être différent ip/ip6?
+                nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &addr6, sizeof(addr6));
+            } else {
+                warn("Valid address expected, got: %s", buffer);
+            }
+            nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &data, sizeof(data));
+            nlh = nft_set_nlmsg_build_hdr(buf, NFT_MSG_NEWSETELEM, family, NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, seq);
+            nft_set_elems_nlmsg_build_payload(nlh, s);
+            if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
+                errc("mnl_socket_sendto failed");
+            }
+            ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
+            while (ret > 0) {
+                if ((ret = mnl_cb_run(buf, ret, seq, portid, NULL, NULL)) <= 0) {
+                    break;
+                }
+                ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
+            }
+            if (-1 == ret) {
+                errc("mnl_socket_recvfrom failed");
+            }
+#endif
 #endif
         }
     }

@@ -6,6 +6,7 @@ USAGE
 =====
 
 ::
+
     pfban [options] <queue name> <PF table name>
 
 -v             verbose
