@@ -1,4 +1,4 @@
-$Module msgsend
+$Module msgsend 3 Send message through POSIX queue
 
 $Object mqueue(STRING)
 $Method VOID .sendmsg(STRING)
