@@ -11,9 +11,22 @@
 
 #include "vcc_if.h"
 
+#ifdef DEBUG
+# include <stdarg.h>
+# define debug(fmt, ...) \
+    do { \
+        FILE *fp;\
+        fp = fopen("/tmp/msgsend.log", "a"); \
+        fprintf(fp, fmt "\n", ## __VA_ARGS__); \
+        fclose(fp); \
+    } while (0);
+#else
+# define debug(fmt, ...)
+#endif /* DEBUG */
+
 /*
 cd $HOME/libvmod-msgsend
-./autogen.sh && ./configure VARNISHSRC=$HOME/Downloads/varnish-4.0.0-tp2/ VMODDIR=/usr/lib/varnish/vmods/ && make ; sudo make install
+./autogen.sh && ./configure VARNISHSRC=$HOME/Downloads/varnish-4.0.0/ && make ; sudo make install
 */
 
 struct vmod_msgsend_mqueue {
@@ -31,11 +44,11 @@ VCL_VOID vmod_mqueue__init(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     AN(qp);
     AZ(*qp);
-    if ((mqd_t) -1 == (mq = mq_open(queue_name, O_WRONLY))) {
+    if (((mqd_t) -1) == (mq = mq_open(queue_name, O_WRONLY))) {
         VSLb(ctx->vsl, SLT_Error, "Can't open mqueue '%s'", queue_name);
         return;
     }
-    XXXAN(((mqd_t) -1) == mq);
+    XXXAZ(((mqd_t) -1) == mq);
     ALLOC_OBJ(q, VMOD_MSGSEND_OBJ_MAGIC);
     AN(q);
     *qp = q;
@@ -47,7 +60,7 @@ VCL_VOID vmod_mqueue__init(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue
 VCL_VOID vmod_mqueue__fini(struct vmod_msgsend_mqueue **qp)
 {
     AN(qp);
-    AN(*qp);
+    CHECK_OBJ_NOTNULL(*qp, VMOD_MSGSEND_OBJ_MAGIC);
     mq_close((*qp)->mq);
     FREE_OBJ(*qp);
     *qp = NULL;
