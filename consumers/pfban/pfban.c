@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <mqueue.h>
 
 #include <unistd.h>
@@ -13,26 +14,6 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <time.h>
-
-#include <sys/types.h>
-/*
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-*/
-/*
-#ifdef __FreeBSD__
-# include <net/if.h>
-# include <net/pfvar.h>
-#else
-# include <linux/netfilter.h>
-# include <linux/netfilter/nf_tables.h>
-# include <libmnl/libmnl.h>
-# include <libnftnl/set.h>
-#endif
-*/
-#include <netdb.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #define STR_LEN(str) (ARRAY_SIZE(str) - 1)
@@ -137,15 +118,6 @@ static int parse_long(const char *str, long *val)
     return 1;
 }
 
-/*
-#ifdef __FreeBSD__
-static int dev = -1;
-#else
-static uint32_t portid;
-static struct nft_set *s = NULL;
-static struct mnl_socket *nl = NULL;
-static struct nft_set_elem *e = NULL;
-#endif*/
 static void *ctxt = NULL;
 static engine_t *engine = NULL;
 static char *buffer = NULL;
@@ -165,21 +137,6 @@ static void cleanup(void)
         free(ctxt);
         ctxt = NULL;
     }
-/*#ifdef __FreeBSD__
-    if (-1 != dev) {
-        if (0 != close(dev)) {
-            warnc("closing /dev/pf failed");
-        }
-        dev = -1;
-    }
-#else
-    if (NULL != s) {
-        nft_set_free(s);
-    }
-    if (NULL != nl) {
-        mnl_socket_close(nl);
-    }
-#endif*/
     if (((mqd_t) -1) != (mq)) {
         if (0 != mq_close(mq)) {
             warnc("mq_close failed");
@@ -235,9 +192,6 @@ int main(int argc, char **argv)
     struct sigaction sa;
     int c, dFlag, vFlag;
     const char *tablename;
-/*#ifndef __FreeBSD__
-    char buf[MNL_SOCKET_BUFFER_SIZE];
-#endif*/
 
 #ifdef WITH_PF
 //     register_engine(&pf_engine);
@@ -347,11 +301,6 @@ int main(int argc, char **argv)
         }
     }
 
-/*#ifdef __FreeBSD__
-    if (-1 == (dev = open("/dev/pf", O_WRONLY))) {
-        errc("failed opening /dev/pf");
-    }
-#endif*/
     if ((gid_t) -1 != gid) {
         if (0 != setgid(gid)) {
             errc("setgid failed");
@@ -371,19 +320,6 @@ int main(int argc, char **argv)
     if (NULL == (buffer = calloc(attr.mq_msgsize + 1, sizeof(*buffer)))) {
         errx("calloc failed");
     }
-/*#if LINUX
-    if (NULL == (nl = mnl_socket_open(NETLINK_GENERIC))) {
-        errc("mnl_socket_open failed");
-    }
-    if (mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID) < 0) {
-        errc("mnl_socket_bind failed");
-    }
-    portid = mnl_socket_get_portid(nl);
-    s = nft_set_alloc();
-    e = nft_set_elem_alloc();
-    nft_set_elem_add(s, e);
-    nft_set_attr_set(s, NFT_SET_ATTR_TABLE, "filter");
-#endif*/
     ctxt = engine->open();
     while (1) {
         ssize_t read;
@@ -397,107 +333,6 @@ int main(int argc, char **argv)
             }
         } else {
             engine->handle(ctxt, tablename, buffer);
-#if 0
-#ifdef __FreeBSD__
-            int ret;
-            struct pfr_addr addr;
-            struct pfioc_table io;
-            struct sockaddr last_src;
-            struct addrinfo *res, *resp;
-            struct pfioc_src_node_kill psnk;
-#endif
-
-            warn("message received: %s\n", buffer);
-#ifdef __FreeBSD__
-            bzero(&io, sizeof(io));
-            strlcpy(io.pfrio_table.pfrt_name, tablename, sizeof(io.pfrio_table.pfrt_name));
-            io.pfrio_buffer = &addr;
-            io.pfrio_esize = sizeof(addr);
-            io.pfrio_size = 1;
-            bzero(&addr, sizeof(addr));
-            if (1 == inet_pton(AF_INET, buffer, &addr.pfra_ip4addr)) {
-                addr.pfra_af = AF_INET;
-                addr.pfra_net = 32;
-            } else if (1 == inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr)) {
-                addr.pfra_af = AF_INET6;
-                addr.pfra_net = 128;
-            } else {
-                warn("Valid address expected, got: %s", buffer);
-            }
-            if (-1 == ioctl(dev, DIOCRADDADDRS, &io)) {
-                errc("ioctl(DIOCRADDADDRS) failed");
-            }
-# if 0
-            /* kill states */
-            memset(&psnk, 0, sizeof(psnk));
-            memset(&psnk.psnk_src.addr.v.a.mask, 0xff, sizeof(psnk.psnk_src.addr.v.a.mask));
-            memset(&last_src, 0xff, sizeof(last_src));
-            if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
-                errc("getaddrinfo failed");
-            }
-            for (resp = res; resp; resp = resp->ai_next) {
-                if (NULL == resp->ai_addr) {
-                    continue;
-                }
-                if (0 == memcmp(&last_src, resp->ai_addr, sizeof(last_src))) {
-                    continue;
-                }
-                last_src = *(struct sockaddr *)resp->ai_addr;
-                psnk.psnk_af = resp->ai_family;
-                switch (psnk.psnk_af) {
-                    case AF_INET:
-                        psnk.psnk_src.addr.v.a.addr.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
-                        break;
-                    case AF_INET6:
-                        psnk.psnk_src.addr.v.a.addr.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
-                        break;
-                    default:
-                        freeaddrinfo(res);
-                        errx("Unknown address family %d", psnk.psnk_af);
-                }
-                if (-1 == ioctl(dev, DIOCKILLSRCNODES, &psnk)) {
-                    errc("ioctl(DIOCKILLSRCNODES) failed");
-                }
-            }
-            freeaddrinfo(res);
-# endif
-#else
-            int ret;
-            struct in_addr addr4;
-            struct in6_addr addr6;
-            struct nlmsghdr *nlh;
-            uint32_t seq, family, data;
-
-            seq = time(NULL);
-            if (1 == inet_pton(AF_INET, buffer, &addr4)) {
-                family = NFPROTO_IPV4;
-                nft_set_attr_set(s, NFT_SET_ATTR_NAME, tablename);
-                nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &addr4, sizeof(addr4));
-            } else if (1 == inet_pton(AF_INET6, buffer, &addr6)) {
-                family = NFPROTO_IPV6;
-                nft_set_attr_set(s, NFT_SET_ATTR_NAME, tablename); // TODO: le nom doit être différent ip/ip6?
-                nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &addr6, sizeof(addr6));
-            } else {
-                warn("Valid address expected, got: %s", buffer);
-            }
-            nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &data, sizeof(data));
-            nlh = nft_set_nlmsg_build_hdr(buf, NFT_MSG_NEWSETELEM, family, NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, seq);
-            nft_set_elems_nlmsg_build_payload(nlh, s);
-            if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) < 0) {
-                errc("mnl_socket_sendto failed");
-            }
-            ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-            while (ret > 0) {
-                if ((ret = mnl_cb_run(buf, ret, seq, portid, NULL, NULL)) <= 0) {
-                    break;
-                }
-                ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-            }
-            if (-1 == ret) {
-                errc("mnl_socket_recvfrom failed");
-            }
-#endif
-#endif
         }
     }
 
