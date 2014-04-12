@@ -13,7 +13,7 @@
 #include "engine.h"
 
 typedef struct {
-    int device;
+    int fd;
 } pf_data_t;
 
 static void *pf_open(void)
@@ -21,7 +21,7 @@ static void *pf_open(void)
     pf_data_t *data;
 
     data = malloc(sizeof(*data));
-    if (-1 == (data->device = open("/dev/pf", O_WRONLY))) {
+    if (-1 == (data->fd = open("/dev/pf", O_WRONLY))) {
         errc("failed opening /dev/pf");
     }
 
@@ -54,7 +54,7 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
     } else {
         warn("Valid address expected, got: %s", buffer);
     }
-    if (-1 == ioctl(data->device, DIOCRADDADDRS, &io)) {
+    if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
         errc("ioctl(DIOCRADDADDRS) failed");
     }
 #if 0
@@ -85,7 +85,7 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
                 freeaddrinfo(res);
                 errx("Unknown address family %d", psnk.psnk_af);
         }
-        if (-1 == ioctl(data->device, DIOCKILLSRCNODES, &psnk)) {
+        if (-1 == ioctl(data->fd, DIOCKILLSRCNODES, &psnk)) {
             errc("ioctl(DIOCKILLSRCNODES) failed");
         }
     }
@@ -100,11 +100,11 @@ static void pf_close(void *ctxt)
     pf_data_t *data;
 
     data = (pf_data_t *) ctxt;
-    if (-1 != data->device) {
-        if (0 != close(data->device)) {
+    if (-1 != data->fd) {
+        if (0 != close(data->fd)) {
             warnc("closing /dev/pf failed");
         }
-        data->device = -1;
+        data->fd = -1;
     }
 }
 

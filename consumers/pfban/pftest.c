@@ -6,18 +6,6 @@
 
 #include "engine.h"
 
-#ifdef WITH_PF
-extern engine_t pf_engine;
-#endif /* PF */
-
-#ifdef WITH_NPF
-extern engine_t npf_engine;
-#endif /* NPF */
-
-#ifdef WITH_NFTABLES
-extern engine_t nftables_engine;
-#endif /* NFTABLES */
-
 void _verr(int fatal, int errcode, const char *fmt, ...)
 {
     va_list ap;
@@ -42,22 +30,16 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
 int main(int argc, char **argv)
 {
     void *ctxt;
-    engine_t *engine;
+    const engine_t *engine;
 
-#ifdef WITH_PF
-//     register_engine(&pf_engine);
-    engine = &pf_engine;
-#endif /* PF */
-
-#ifdef WITH_NPF
-//     register_engine(&npf_engine);
-    engine = &npf_engine;
-#endif /* NPF */
-
-#ifdef WITH_NFTABLES
-//     register_engine(&nftables_engine);
-    engine = &nftables_engine;
-#endif /* NFTABLES */
+    if (argc > 1) {
+        engine = get_engine_by_name(argv[1]);
+    } else {
+        engine = get_default_engine();
+    }
+    if (NULL == engine) {
+        errx("no engine found");
+    }
 
     ctxt = engine->open();
     engine->handle(ctxt, "blacklist", "1.2.3.4");

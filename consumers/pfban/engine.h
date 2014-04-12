@@ -18,4 +18,7 @@ typedef struct {
 
 void _verr(int, int, const char *, ...);
 
+const engine_t *get_default_engine(void);
+const engine_t *get_engine_by_name(const char *);
+
 #endif /* !X_ENGINE_H */

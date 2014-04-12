@@ -5,7 +5,7 @@ set(CMAKE_C_FLAGS_MAINTAINER "-g -DDEBUG -Wall -Wextra -std=gnu99 -Wwrite-string
 mark_as_advanced(CMAKE_C_FLAGS_MAINTAINER)
 set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES} Maintainer")
 
-set(SOURCES )
+set(SOURCES "engine.c;")
 set(LIBRARIES )
 
 list(APPEND LIBRARIES "rt")

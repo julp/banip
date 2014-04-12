@@ -2,15 +2,18 @@
 
 ## Usage
 
-`pfban [options] <queue name> <PF table name>`
+`pfban [options] -q <queue name> -t <table name>`
 
-* `-v`: be verbose
-* `-d`: daemonize (default: off)
-* `-l <filename>`: logfile (default: stderr)
-* `-p <filename>`: pidfile (default: none)
-* `-g <group>`: group to run as
-* `-b <size>`: maximum messages size (in bytes) (default: 1024)
-* `-s <size>`: maximum messages in queue (default: 10)
+* `-v/--verbose`: be verbose
+* `-d/--daemonize`: daemonize (default: off)
+* `-e/--engine <engine>`: name of the firewall to use (optional except for NetBSD if PF and NPF are both enabled)
+* `-l/--log <filename>`: logfile (default: stderr)
+* `-p/--pid <filename>`: pidfile (default: none)
+* `-q/--queue <queue name>`: name of the queue
+* `-g/--group <group>`: name of the group to run as
+* `-b/--msgsize <size>`: maximum messages size (in bytes) (default: 1024)
+* `-s/--qsize <size>`: maximum messages in queue (default: 10)
+* `-t/--table <table name>`: name of the table/set
 
 ## Supported firewalls
 

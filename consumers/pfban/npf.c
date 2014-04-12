@@ -8,7 +8,7 @@
 #include "engine.h"
 
 typedef struct {
-    int device;
+    int fd;
 } npf_data_t;
 
 static void *npf_open(void)
@@ -16,7 +16,7 @@ static void *npf_open(void)
     npf_data_t *data;
 
     data = malloc(sizeof(*data));
-    if (-1 == (data->device = open("/dev/npf", O_WRONLY))) {
+    if (-1 == (data->fd = open("/dev/npf", O_WRONLY))) {
         errc("failed opening /dev/npf");
     }
 
@@ -49,7 +49,7 @@ static int npf_handle(void *ctxt, const char *tablename, const char *buffer)
     } else {
         warn("Valid address expected, got: %s", buffer);
     }
-    if (-1 == ioctl(data->device, IOC_NPF_TABLE, &nct)) {
+    if (-1 == ioctl(data->fd, IOC_NPF_TABLE, &nct)) {
         errc("ioctl(IOC_NPF_TABLE) failed");
     }
 
@@ -61,11 +61,11 @@ static void npf_close(void *ctxt)
     npf_data_t *data;
 
     data = (npf_data_t *) ctxt;
-    if (-1 != data->device) {
-        if (0 != close(data->device)) {
+    if (-1 != data->fd) {
+        if (0 != close(data->fd)) {
             warnc("closing /dev/npf failed");
         }
-        data->device = -1;
+        data->fd = -1;
     }
 }
 

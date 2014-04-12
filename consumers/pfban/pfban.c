@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -15,23 +14,11 @@
 #include <stdarg.h>
 #include <time.h>
 
+#include "engine.h"
+
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #define STR_LEN(str) (ARRAY_SIZE(str) - 1)
 #define STR_SIZE(str) (ARRAY_SIZE(str))
-
-#include "engine.h"
-
-#ifdef WITH_PF
-extern engine_t pf_engine;
-#endif /* PF */
-
-#ifdef WITH_NPF
-extern engine_t npf_engine;
-#endif /* NPF */
-
-#ifdef WITH_NFTABLES
-extern engine_t nftables_engine;
-#endif /* NFTABLES */
 
 enum {
     PFBAN_EXIT_SUCCESS = 0,
@@ -41,24 +28,34 @@ enum {
 
 extern char *__progname;
 
-static char optstr[] = "b:dg:hl:p:s:v";
+static char optstr[] = "b:e:g:l:p:q:s:t:dhv";
+
+static struct option long_options[] =
+{
+    {"msgsize",          required_argument, NULL, 'b'},
+    {"daemonize",        no_argument,       NULL, 'd'},
+    {"engine",           required_argument, NULL, 'e'},
+    {"group",            required_argument, NULL, 'g'},
+    {"log",              required_argument, NULL, 'l'},
+    {"pid",              required_argument, NULL, 'p'},
+    {"queue",            required_argument, NULL, 'q'},
+    {"qsize",            required_argument, NULL, 's'},
+    {"table",            required_argument, NULL, 't'},
+    {"verbose",          no_argument,       NULL, 'v'},
+    {NULL,               no_argument,       NULL, 0}
+};
 
 static void usage(void) {
     fprintf(
         stderr,
-        "usage: %s [-%s] queue_name table_name\n",
+        "usage: %s [-%s] [ -q queue_name ] [ -t table_name ]\n",
         __progname,
-        optstr
+        NULL == strrchr(optstr, ':') ? optstr : strrchr(optstr, ':') + 1
     );
     exit(PFBAN_EXIT_USAGE);
 }
 
 static FILE *err_file = NULL;
-
-#define errx(fmt, ...)  _verr(1, 0, fmt, ## __VA_ARGS__)
-#define errc(fmt, ...)  _verr(1, errno, fmt, ## __VA_ARGS__)
-#define warnc(fmt, ...) _verr(0, errno, fmt, ## __VA_ARGS__)
-#define warn(fmt, ...)  _verr(0, 0, fmt, ## __VA_ARGS__)
 
 void _verr(int fatal, int errcode, const char *fmt, ...)
 {
@@ -119,10 +116,10 @@ static int parse_long(const char *str, long *val)
 }
 
 static void *ctxt = NULL;
-static engine_t *engine = NULL;
 static char *buffer = NULL;
 static mqd_t mq = (mqd_t) -1;
 static const char *queuename = NULL;
+static const engine_t *engine = NULL;
 static const char *pidfilename = NULL;
 static const char *logfilename = NULL;
 
@@ -179,11 +176,6 @@ static void on_signal(int signo)
     kill(getpid(), signo);
 }
 
-static void register_engine(const engine_t *engine)
-{
-    //
-}
-
 int main(int argc, char **argv)
 {
     gid_t gid;
@@ -192,21 +184,6 @@ int main(int argc, char **argv)
     struct sigaction sa;
     int c, dFlag, vFlag;
     const char *tablename;
-
-#ifdef WITH_PF
-//     register_engine(&pf_engine);
-    engine = &pf_engine;
-#endif /* PF */
-
-#ifdef WITH_NPF
-//     register_engine(&npf_engine);
-    engine = &npf_engine;
-#endif /* NPF */
-
-#ifdef WITH_NFTABLES
-//     register_engine(&nftables_engine);
-    engine = &nftables_engine;
-#endif /* NFTABLES */
 
     ctxt = NULL;
     gid = (gid_t) -1;
@@ -220,7 +197,10 @@ int main(int argc, char **argv)
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGUSR1, &sa, NULL);
-    while (-1 != (c = getopt(argc, argv, optstr))) {
+    if (NULL == (engine = get_default_engine())) {
+        errx("no engine available for your system");
+    }
+    while (-1 != (c = getopt_long(argc, argv, optstr, long_options, NULL))) {
         switch (c) {
             case 'b':
             {
@@ -234,6 +214,13 @@ int main(int argc, char **argv)
             case 'd':
                 dFlag = 1;
                 break;
+            case 'e':
+            {
+                if (NULL == (engine = get_engine_by_name(optarg))) {
+                    errx("unknown engine '%s'", optarg);
+                }
+                break;
+            }
             case 'g':
             {
                 struct group *grp;
@@ -254,10 +241,11 @@ int main(int argc, char **argv)
                 break;
             }
             case 'p':
-            {
                 pidfilename = optarg;
                 break;
-            }
+            case 'q':
+                queuename = optarg;
+                break;
             case 's':
             {
                 long val;
@@ -267,6 +255,9 @@ int main(int argc, char **argv)
                 }
                 break;
             }
+            case 't':
+                tablename = optarg;
+                break;
             case 'v':
                 vFlag++;
                 break;
@@ -278,11 +269,8 @@ int main(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    if (argc != 2) {
+    if (0 != argc || NULL == queuename || NULL == tablename) {
         usage();
-    } else {
-        queuename = *argv++;
-        tablename = *argv++;
     }
 
     if (dFlag) {
