@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ ! -x /usr/sbin/npfctl ]; then
+if [ ! -x /sbin/npfctl ]; then
     exit 0
 fi
 
@@ -10,6 +10,11 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 ${TESTDIR}/pftest
 
-assertExitValue "NPF" "npfctl table blacklist test 1.2.3.4 &> /dev/null" 0
+TABLE="blacklist"
+ntpctl show | grep -qF "<${TABLE}>"
+if [ $? -ne 0 ]; then
+        TABLE="0"
+fi
 
-npfctl table blacklist rem 1.2.3.4
+assertExitValue "NPF" "npfctl table ${TABLE} test 1.2.3.4 &> /dev/null" 0
+npfctl table ${TABLE} rem 1.2.3.4

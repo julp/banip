@@ -1,5 +1,9 @@
-#include <net/npf/npf.h>
-// #include <net/pfvar.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <net/npf.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "engine.h"
 
@@ -28,9 +32,12 @@ static int npf_handle(void *ctxt, const char *tablename, const char *buffer)
     struct sockaddr_in6 sin6;
 
     data = (npf_data_t *) ctxt;
-//     memset(&nct, 0, sizeof(nct));
     bzero(&nct, sizeof(nct));
+#ifdef NPF_ALLOW_NAMED_TABLE
     nct.nct_name = tablename;
+#else
+    nct.nct_tid = atoi(tablename);
+#endif /* NPF_ALLOW_NAMED_TABLE */
     nct.nct_cmd = NPF_CMD_TABLE_ADD;
     nct.nct_data.ent.mask = NPF_NO_NETMASK;
     if (1 == inet_pton(AF_INET, buffer, &sin.sin_addr)) {
