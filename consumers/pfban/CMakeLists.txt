@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.8)
 
 set(CMAKE_C_FLAGS_MAINTAINER "-g -DDEBUG -Wall -Wextra -std=gnu99 -Wwrite-strings -Wstrict-prototypes -Wuninitialized -Wunreachable-code -Wno-comment -Wnonnull"
     CACHE STRING "Flags used by the C compiler during maintainer builds." FORCE)
@@ -8,7 +8,6 @@ set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES} Maintainer")
 set(SOURCES )
 set(LIBRARIES )
 
-list(APPEND SOURCES pfban.c)
 list(APPEND LIBRARIES "rt")
 
 if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
@@ -36,17 +35,12 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
 endif(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
-add_executable(pfban ${SOURCES})
+add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
+
+add_executable(pfban $<TARGET_OBJECTS:__common_sources> pfban.c)
 target_link_libraries(pfban ${LIBRARIES})
 
-option(TEST "enable tests" ON)
+add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
+target_link_libraries(pftest ${LIBRARIES})
 
-if(TEST)
-    list(REMOVE_ITEM SOURCES pfban.c)
-    list(APPEND SOURCES pftest.c)
-
-    add_executable(pftest ${SOURCES})
-    target_link_libraries(pftest ${LIBRARIES})
-
-    add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR} -name '*.sh' -exec bash {} "\;")
-endif(TEST)
+add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR} -name '*.sh' -exec bash {} "\;")
