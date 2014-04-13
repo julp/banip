@@ -8,7 +8,7 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 . ${TESTDIR}/assert.sh.inc
 
-${TESTDIR}/pftest
+${TESTDIR}/pftest -e npf
 
 TABLE="blacklist"
 ntpctl show | grep -qF "<${TABLE}>"

@@ -8,7 +8,7 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 . ${TESTDIR}/assert.sh.inc
 
-${TESTDIR}/pftest
+${TESTDIR}/pftest -e pf
 
 assertExitValue "PF" "pfctl -t blacklist -T test 1.2.3.4 &> /dev/null" 0
 
