@@ -71,6 +71,7 @@ pass in quick log on ... inet proto tcp from <whitelist> ... port ssh
 block quick from <blacklist>
 # ...
 ```
+Note: an alternate approach, specific to PF, is to prevently add these addresses by negating them.
 
 ### Rotating log
 
