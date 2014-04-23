@@ -1,0 +1,3 @@
+A Varnish module to send POSIX messages from Varnish 4 to another process
+
+WWW: https://github.com/julp/libvmod-msgsend

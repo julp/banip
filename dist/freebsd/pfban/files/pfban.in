@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# PROVIDE: pfban
+# REQUIRE: LOGIN cleanvar
+# BEFORE: varnishd
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="pfban"
+rcvar="${name}_enable"
+
+load_rc_config ${name}
+
+pidfile="/var/run/${name}.pid"
+
+: ${pfban_enable:="NO"}
+: ${pfban_table:="blacklist"}
+: ${pfban_queue:="/pfban"}
+: ${pfban_group:="varnish"}
+: ${pfban_flags:="-d -g varnish -p ${pidfile} -t ${pfban_table} -q ${pfban_queue}"}
+
+command="/usr/local/sbin/pfban"
+procname="${command}" # Even if FreeBSD has a pidfile, it looks also for processus name
+extra_commands="status"
+
+run_rc_command "$1"
