@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 
 if(NOT DEFINED VARNISHSRC)
-    message(FATAL_ERROR "Add -DVARNISHSRC:PATH=/path/to/varnish/sources to your cmake command line or define it through its GUI (ccmake & co)")
+    message(WARNING "You may need to add -DVARNISHSRC:PATH=/path/to/varnish/sources to your cmake command line or define it through its GUI (ccmake & co)")
 endif(NOT DEFINED VARNISHSRC)
 
 find_package(PythonInterp REQUIRED)
