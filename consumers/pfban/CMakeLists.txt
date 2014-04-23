@@ -44,3 +44,5 @@ add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
 target_link_libraries(pftest ${LIBRARIES})
 
 add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR} -name '*.sh' -exec bash {} "\;")
+
+install(TARGETS pfban RUNTIME DESTINATION sbin)
