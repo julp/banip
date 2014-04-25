@@ -1,9 +1,28 @@
 #!/bin/bash
 
+if [ -z "${PFBAN_TEST_TABLE}" ]; then
+    export PFBAN_TEST_TABLE='blacklist'
+fi
+
 declare -ri TRUE=0
 declare -ri FALSE=1
 
 trap "rm -f /tmp/${PPID}.*" EXIT ERR SIGINT
+
+skipUnlessBinaryExists() {
+    if [ $# -ne 1 ]; then
+        echo "ArgumentError: ${FUNCNAME[0]}(binary)"
+        return $FALSE
+    fi
+
+    which "${1}" &>/dev/null
+    if [ $? -ne $TRUE ]; then
+        printf "%s, %s: [ \e[%d;01m%s\e[0m ]\n" `basename $0` "$1" 33 SKIPPED
+        exit $TRUE
+    fi
+
+    return $?
+}
 
 __assertTrue() {
     if eval $2; then
