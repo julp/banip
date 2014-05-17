@@ -10,14 +10,15 @@ Send POSIX messages from Varnish 4 to another process
 
 ### FreeBSD
 
-1. POSIX message queue file system support enabled in kernel:
-    * kernel compiled with: `options P1003_1B_MQUEUE`
-    * (or) loading kernel module:
-        + manually: `kldload mqueuefs`
-        + automatically: `echo 'mqueuefs_load="YES"' >> /boot/loader.conf`
-2. Mount mqueuefs at the /mnt/mqueue
-    * manually: `mount -t mqueuefs null /mnt/mqueue`
-    * (or) automatically: `echo 'null    /mnt/mqueue     mqueuefs         rw      0       0' >> /etc/fstab`
+POSIX message queue file system support enabled in kernel:
+* kernel compiled with: `options P1003_1B_MQUEUE`
+* (or) loading kernel module:
+    + manually: `kldload mqueuefs`
+    + automatically: `echo 'mqueuefs_load="YES"' >> /boot/loader.conf`
+
+Optional (convenient), mount mqueuefs to see current POSIX queues in `/mnt/mqueue/`:
+* manually: `mount -t mqueuefs null /mnt/mqueue`
+* (or) automatically: `echo 'null    /mnt/mqueue     mqueuefs         rw      0       0' >> /etc/fstab`
 
 ## Installation
 
