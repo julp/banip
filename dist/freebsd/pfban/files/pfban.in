@@ -18,7 +18,8 @@ pidfile="/var/run/${name}.pid"
 : ${pfban_table:="blacklist"}
 : ${pfban_queue:="/pfban"}
 : ${pfban_group:="varnish"}
-: ${pfban_flags:="-d -g ${pfban_group} -p ${pidfile} -t ${pfban_table} -q ${pfban_queue}"}
+: ${pfban_log:="/var/log/pfban.log"}
+: ${pfban_flags:="-d -g ${pfban_group} -p ${pidfile} -l ${pfban_log} -t ${pfban_table} -q ${pfban_queue}"}
 
 command="/usr/local/sbin/pfban"
 procname="${command}" # Even if FreeBSD has a pidfile, it looks also for processus name
