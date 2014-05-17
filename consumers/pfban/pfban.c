@@ -158,6 +158,7 @@ static void on_signal(int signo)
 {
     switch (signo) {
         case SIGINT:
+        case SIGTERM:
             cleanup();
             break;
         case SIGUSR1:
@@ -189,7 +190,7 @@ int main(int argc, char **argv)
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
-    /* default hardcoded values in FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
+    /* default hardcoded values on FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = 1024;
     atexit(cleanup);
