@@ -6,7 +6,7 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 skipUnlessBinaryExists nft
 
-${TESTDIR}/pftest
+${TESTDIR}/../pftest
 
 assertOutputValue "nftables" "nft list set filter ${PFBAN_TEST_TABLE} 2>/dev/null | grep -cF 1.2.3.4" 1 "-eq"
 

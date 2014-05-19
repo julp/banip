@@ -6,7 +6,7 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 skipUnlessBinaryExists npfctl
 
-${TESTDIR}/pftest -e npf
+${TESTDIR}/../pftest -e npf
 
 TABLE="${PFBAN_TEST_TABLE}"
 ntpctl show | grep -qF "<${TABLE}>"

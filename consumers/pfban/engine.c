@@ -14,6 +14,8 @@ extern engine_t npf_engine;
 extern engine_t nftables_engine;
 #endif /* NFTABLES */
 
+extern engine_t dummy_engine;
+
 static const engine_t *available_engines[] = {
 #ifdef WITH_PF
     &pf_engine,
@@ -24,6 +26,7 @@ static const engine_t *available_engines[] = {
 #ifdef WITH_NFTABLES
     &nftables_engine,
 #endif /* NFTABLES */
+    &dummy_engine,
     NULL
 };
 

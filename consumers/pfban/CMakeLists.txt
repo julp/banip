@@ -35,6 +35,8 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
 endif(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
+list(APPEND SOURCES dummy.c)
+
 add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 
 add_executable(pfban $<TARGET_OBJECTS:__common_sources> pfban.c)
@@ -43,6 +45,6 @@ target_link_libraries(pfban ${LIBRARIES})
 add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
 target_link_libraries(pftest ${LIBRARIES})
 
-add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR} -name '*.sh' -exec bash {} "\;")
+add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS pfban pftest)
 
 install(TARGETS pfban RUNTIME DESTINATION sbin)
