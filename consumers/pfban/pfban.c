@@ -14,11 +14,8 @@
 #include <stdarg.h>
 #include <time.h>
 
+#include "common.h"
 #include "engine.h"
-
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-#define STR_LEN(str) (ARRAY_SIZE(str) - 1)
-#define STR_SIZE(str) (ARRAY_SIZE(str))
 
 enum {
     PFBAN_EXIT_SUCCESS = 0,
@@ -326,6 +323,7 @@ int main(int argc, char **argv)
             engine->handle(ctxt, tablename, buffer);
         }
     }
+    /* not reached */
 
     return PFBAN_EXIT_SUCCESS;
 }
