@@ -2,8 +2,8 @@
 
 # define QUEUE_H
 
-# define QUEUE_FL_SENDER   1
-# define QUEUE_FL_OWNER    2
+# define QUEUE_FL_SENDER 1
+# define QUEUE_FL_OWNER  2
 
 typedef enum {
     QUEUE_ERR_OK,

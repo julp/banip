@@ -156,28 +156,30 @@ queue_err_t queue_send(void *p, const char *msg, int msg_len)
 
 queue_err_t queue_close(void **p)
 {
-    systemv_queue_t *q;
+    if (NULL != *p) {
+        systemv_queue_t *q;
 
-    q = (systemv_queue_t *) *p;
-    if (NULL != q->filename) { // we are the owner
-        if (0 != msgctl(q->qid, IPC_RMID, NULL)) {
-            //
-            return QUEUE_ERR_GENERAL_FAILURE;
+        q = (systemv_queue_t *) *p;
+        if (NULL != q->filename) { // we are the owner
+            if (0 != msgctl(q->qid, IPC_RMID, NULL)) {
+                //
+                return QUEUE_ERR_GENERAL_FAILURE;
+            }
+            q->qid = -1;
+            if (0 != unlink(q->filename)) {
+                //
+                return QUEUE_ERR_GENERAL_FAILURE;
+            }
+            free(q->filename);
+            q->filename = NULL;
         }
-        q->qid = -1;
-        if (0 != unlink(q->filename)) {
-            //
-            return QUEUE_ERR_GENERAL_FAILURE;
+        if (NULL != q->buffer) {
+            free(q->buffer);
+            q->buffer = NULL;
         }
-        free(q->filename);
-        q->filename = NULL;
+        free(*p);
+        *p = NULL;
     }
-    if (NULL != q->buffer) {
-        free(q->buffer);
-        q->buffer = NULL;
-    }
-    free(*p);
-    *p = NULL;
 
     return QUEUE_ERR_OK;
 }

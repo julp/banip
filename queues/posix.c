@@ -134,30 +134,32 @@ queue_err_t queue_send(void *p, const char *msg, int msg_len)
 
 queue_err_t queue_close(void **p)
 {
-    posix_queue_t *q;
+    if (NULL != *p) {
+        posix_queue_t *q;
 
-    q = (posix_queue_t *) p;
-    if (NOT_MQD_T != q->mq) {
-        if (0 != mq_close(q->mq)) {
-            //
-            return QUEUE_ERR_GENERAL_FAILURE;
+        q = (posix_queue_t *) *p;
+        if (NOT_MQD_T != q->mq) {
+            if (0 != mq_close(q->mq)) {
+                //
+                return QUEUE_ERR_GENERAL_FAILURE;
+            }
+            q->mq = NOT_MQD_T;
         }
-        q->mq = NOT_MQD_T;
-    }
-    if (NULL != q->filename) { // we are the owner
-        if (0 != mq_unlink(q->filename)) {
-            //
-            return QUEUE_ERR_GENERAL_FAILURE;
+        if (NULL != q->filename) { // we are the owner
+            if (0 != mq_unlink(q->filename)) {
+                //
+                return QUEUE_ERR_GENERAL_FAILURE;
+            }
+            free(q->filename);
+            q->filename = NULL;
         }
-        free(q->filename);
-        q->filename = NULL;
+        if (NULL != q->buffer) {
+            free(q->buffer);
+            q->buffer = NULL;
+        }
+        free(*p);
+        *p = NULL;
     }
-    if (NULL != q->buffer) {
-        free(q->buffer);
-        q->buffer = NULL;
-    }
-    free(*p);
-    *p = NULL;
 
     return QUEUE_ERR_OK;
 }
