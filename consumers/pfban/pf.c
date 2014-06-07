@@ -57,7 +57,6 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
     if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
         errc("ioctl(DIOCRADDADDRS) failed");
     }
-#if 0
     /* kill states */
     memset(&psnk, 0, sizeof(psnk));
     memset(&psnk.psnk_src.addr.v.a.mask, 0xff, sizeof(psnk.psnk_src.addr.v.a.mask));
@@ -90,7 +89,6 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
         }
     }
     freeaddrinfo(res);
-#endif
 
     return 1;
 }
