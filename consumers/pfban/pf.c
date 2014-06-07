@@ -7,6 +7,7 @@
 #include <net/if.h>
 #include <net/pfvar.h>
 #include <sys/ioctl.h>
+#include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 
