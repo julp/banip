@@ -84,8 +84,8 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
                 freeaddrinfo(res);
                 errx("Unknown address family %d", psnk.psnk_af);
         }
-        if (-1 == ioctl(data->fd, DIOCKILLSRCNODES, &psnk)) {
-            errc("ioctl(DIOCKILLSRCNODES) failed");
+        if (-1 == ioctl(data->fd, DIOCKILLSTATES, &psnk)) {
+            errc("ioctl(DIOCKILLSTATES) failed");
         }
     }
     freeaddrinfo(res);
