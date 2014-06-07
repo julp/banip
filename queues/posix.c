@@ -88,7 +88,7 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
             return QUEUE_ERR_GENERAL_FAILURE;
         }
     }
-    if (NOT_MQD_T == (q->mq = mq_open(filename, omask, 0420, &q->attr))) {
+    if (NOT_MQD_T == (q->mq = mq_open(filename, omask, 0620, &q->attr))) {
         if (HAS_FLAG(flags, QUEUE_FL_OWNER)) {
             umask(oldmask);
 #ifdef __FreeBSD__
@@ -141,25 +141,36 @@ queue_err_t queue_get_attribute(void *p, queue_attr_t attr, unsigned long *value
 
 int queue_receive(void *p, char *buffer, size_t buffer_size)
 {
+    int read;
     posix_queue_t *q;
 
     q = (posix_queue_t *) p;
+    if (-1 != (read = mq_receive(q->mq, buffer, buffer_size, NULL))) {
+        buffer[read] = '\0';
+    }
 
-    return mq_receive(q->mq, buffer, buffer_size, NULL);
+    return read;
 }
 
 queue_err_t queue_send(void *p, const char *msg, int msg_len)
 {
+#if 0
     long msg_size;
+#endif
     posix_queue_t *q;
 
     q = (posix_queue_t *) p;
+#if 0
     if (msg_len < 0) {
         msg_size = strlen(msg) + 1;
     } else {
         msg_size = msg_len + 1;
     }
-    if (0 == mq_send(q->mq, msg, msg_size, 0)) {
+#endif
+    if (msg_len < 0) {
+        msg_len = strlen(msg_len);
+    }
+    if (0 == mq_send(q->mq, msg, msg_len/*msg_size*/, 0)) {
         return QUEUE_ERR_OK;
     } else {
         // TODO: error

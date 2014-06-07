@@ -49,12 +49,18 @@ queue_err_t queue_set_attribute(void *p, queue_attr_t attr, unsigned long value)
     if (NULL == q->filename) {
         return QUEUE_ERR_NOT_OWNER;
     } else {
-        switch (attr) {
-            case QUEUE_ATTR_MAX_QUEUE_SIZE:
-                break;
-            default:
-                return QUEUE_ERR_NOT_SUPPORTED;
+#if 0
+        struct msqid_ds buf;
+
+        if (0 != msgctl(q->qid, IPC_STAT, &buf)) {
+            return QUEUE_ERR_GENERAL_FAILURE;
         }
+        buf.X = Y;
+        if (0 != msgctl(q->qid, IPC_SET, &buf)) {
+            return QUEUE_ERR_GENERAL_FAILURE;
+        }
+#endif
+        return QUEUE_ERR_NOT_SUPPORTED;
     }
 
     return QUEUE_ERR_OK;
@@ -65,7 +71,6 @@ queue_err_t queue_open(void *p, const char *name, int flags)
     int id;
     FILE *fp;
     key_t key;
-    char *buffer;
     mode_t oldmask;
     systemv_queue_t *q;
     char *s, filename[MAXPATHLEN];
@@ -80,29 +85,31 @@ queue_err_t queue_open(void *p, const char *name, int flags)
             }
         } else {
             id = s[1];
-            if (strlcpy(filename, s - name, STR_SIZE(filename)) >= STR_SIZE(filename)) {
+            if (s - name >= STR_SIZE(filename)) {
                 errno = E2BIG;
                 return QUEUE_ERR_GENERAL_FAILURE;
             }
+            strncpy(filename, name, s - name);
         }
-        oldmask = umask(0);
         if (NULL == (fp = fopen(filename, "wx"))) {
-            umask(oldmask);
             // TODO: error
             return QUEUE_ERR_GENERAL_FAILURE;
         }
-        umask(oldmask);
-        if (fwrite(&id, sizeof(id), 1, fp) < sizeof(id)) {
+        if (1 != fwrite(&id, sizeof(id), 1, fp)) {
             // TODO: error
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         fflush(fp);
     } else {
+        if (strlcpy(filename, name, STR_SIZE(filename)) >= STR_SIZE(filename)) {
+            errno = E2BIG;
+            return QUEUE_ERR_GENERAL_FAILURE;
+        }
         if (NULL == (fp = fopen(filename, "r"))) {
             // TODO: error
             return QUEUE_ERR_GENERAL_FAILURE;
         }
-        if (fread(&id, sizeof(id), 1, fp) < sizeof(id)) {
+        if (1 != fread(&id, sizeof(id), 1, fp) < sizeof(id)) {
             // TODO: error
             return QUEUE_ERR_GENERAL_FAILURE;
         }
@@ -119,20 +126,21 @@ queue_err_t queue_open(void *p, const char *name, int flags)
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         oldmask = umask(0);
-        q->qid = msgget(key, 0420 | IPC_CREAT | IPC_EXCL);
+        q->qid = msgget(key, 0620 | IPC_CREAT | IPC_EXCL);
         umask(oldmask);
     } else {
-        q->qid = msgget(key, 0420);
+        q->qid = msgget(key, 0620);
     }
     if (-1 == q->qid) {
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
     }
-    if (NULL == (buffer = malloc(sizeof(long) + sizeof(q->buffer) * 512))) { // TODO: non hardcoded value
+    q->buffer_size = 512;
+    if (NULL == (q->buffer = malloc(sizeof(long) + sizeof(q->buffer) * q->buffer_size))) { // TODO: non hardcoded value
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
     }
-    q->buffer = buffer + sizeof(long); // to avoid an useless pointer, don't forget to subtract sizeof(long) to this pointer for freeing it
+    *(long *) q->buffer = 1; /* mtype is an integer greater than 0 */
 
     return QUEUE_ERR_OK;
 }
@@ -144,7 +152,16 @@ queue_err_t queue_get_attribute(void *p, queue_attr_t attr, unsigned long *value
     q = (systemv_queue_t *) p;
     switch (attr) {
         case QUEUE_ATTR_MAX_QUEUE_SIZE:
+        case QUEUE_ATTR_MAX_MESSAGE_SIZE:
+        {
+            struct msqid_ds buf;
+
+            if (0 != msgctl(q->qid, IPC_STAT, &buf)) {
+                return QUEUE_ERR_GENERAL_FAILURE;
+            }
+            *value = buf.msg_qbytes;
             break;
+        }
         default:
             return QUEUE_ERR_NOT_SUPPORTED;
     }
@@ -154,12 +171,16 @@ queue_err_t queue_get_attribute(void *p, queue_attr_t attr, unsigned long *value
 
 int queue_receive(void *p, char *buffer, size_t buffer_size)
 {
+    int read;
     systemv_queue_t *q;
 
     q = (systemv_queue_t *) p;
 
-    // TODO: copy buffer => q->buffer
-    return msgrcv(q->qid, q->buffer, q->buffer_size, 0, 0);
+    if (-1 != (read = msgrcv(q->qid, q->buffer, buffer_size, 0, 0))) { // TODO: min(buffer_size, q->buffer_size) ?
+        strcpy(buffer, q->buffer + sizeof(long)); // TODO: better ?
+    }
+
+    return read;
 }
 
 queue_err_t queue_send(void *p, const char *msg, int msg_len)
@@ -167,8 +188,11 @@ queue_err_t queue_send(void *p, const char *msg, int msg_len)
     systemv_queue_t *q;
 
     q = (systemv_queue_t *) p;
+    if (msg_len < 0) {
+        msg_len = strlen(msg);
+    }
+    strcpy(q->buffer + sizeof(long), msg); // TODO: safer
     if (0 == msgsnd(q->qid, q->buffer, q->buffer_size,  0)) {
-        // TODO: copy q->buffer => buffer
         return QUEUE_ERR_OK;
     } else {
         // TODO: error
@@ -196,7 +220,7 @@ queue_err_t queue_close(void **p)
             q->filename = NULL;
         }
         if (NULL != q->buffer) {
-            free(q->buffer - sizeof(long));
+            free(q->buffer);
             q->buffer = NULL;
         }
         free(*p);

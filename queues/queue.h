@@ -44,6 +44,7 @@ void *queue_init(void);
  *
  * @return
  * - QUEUE_ERR_OK if new value is effective
+ * - QUEUE_ERR_NOT_OWNER if "current process" is not the owner of the queue
  * - QUEUE_ERR_NOT_SUPPORTED if given attribute is invalid or not handled by the underlaying implementation
  * - QUEUE_ERR_GENERAL_FAILURE on internal failure
  **/

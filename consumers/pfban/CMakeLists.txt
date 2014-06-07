@@ -44,8 +44,12 @@ add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 add_executable(pfban $<TARGET_OBJECTS:__common_sources> pfban.c)
 target_link_libraries(pfban ${LIBRARIES})
 
+# Programs for testing
 add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
 target_link_libraries(pftest ${LIBRARIES})
+
+add_executable(bansend bansend.c)
+target_link_libraries(bansend queue)
 
 add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS pfban pftest)
 

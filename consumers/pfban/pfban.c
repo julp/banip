@@ -212,7 +212,9 @@ int main(int argc, char **argv)
     attr.mq_maxmsg = 10;
     attr.mq_msgsize = 1024;
 #else
-    queue = queue_init(); // TODO: NULL != queue
+    if (NULL == (queue = queue_init())) {
+        errx("queue_init failed"); // TODO: better
+    }
 #endif /* !QUEUE_ABSTRACTION */
     atexit(cleanup);
     sa.sa_handler = &on_signal;
@@ -234,7 +236,7 @@ int main(int argc, char **argv)
 #ifndef QUEUE_ABSTRACTION
                     attr.mq_msgsize = val;
 #else
-                    // TODO: queue_set_attribute(queue, QUEUE_ATTR_X, val);
+                    queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, val); // TODO: check returned value
 #endif /* !QUEUE_ABSTRACTION */
                 }
                 break;
@@ -282,7 +284,7 @@ int main(int argc, char **argv)
 #ifndef QUEUE_ABSTRACTION
                     attr.mq_maxmsg = val;
 #else
-                    // TODO: queue_set_attribute(queue, QUEUE_ATTR_X, val);
+                    queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, val); // TODO: check returned value
 #endif /* !QUEUE_ABSTRACTION */
                 }
                 break;
