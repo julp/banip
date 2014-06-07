@@ -6,12 +6,11 @@ mark_as_advanced(CMAKE_C_FLAGS_MAINTAINER)
 set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES} Maintainer")
 
 set(SOURCES "engine.c;")
-set(LIBRARIES )
+set(LIBRARIES "queue;")
 
 include_directories(${PROJECT_SOURCE_DIR}/../../queues)
 
-list(APPEND LIBRARIES "rt") # TODO: removal
-# add_subdirectory(${PROJECT_SOURCE_DIR}/../../queues)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../../queues queues)
 
 if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
     add_definitions(-DWITH_PF)
@@ -43,10 +42,10 @@ list(APPEND SOURCES dummy.c)
 add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 
 add_executable(pfban $<TARGET_OBJECTS:__common_sources> pfban.c)
-target_link_libraries(pfban ${LIBRARIES}) # TODO: s/${LIBRARIES}/queue/
+target_link_libraries(pfban ${LIBRARIES})
 
 add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
-target_link_libraries(pftest ${LIBRARIES}) # TODO: s/${LIBRARIES}/queue/
+target_link_libraries(pftest ${LIBRARIES})
 
 add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS pfban pftest)
 

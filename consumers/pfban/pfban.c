@@ -197,6 +197,7 @@ int main(int argc, char **argv)
     struct mq_attr attr;
 #else
     const char *queuename;
+    unsigned long max_message_size;
 #endif /* !QUEUE_ABSTRACTION */
     struct sigaction sa;
     int c, dFlag, vFlag;
@@ -344,7 +345,12 @@ int main(int argc, char **argv)
     if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
         errx("queue_open failed"); // TODO: better
     }
-    // TODO: allocate buffer ?
+    if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {
+        errx("queue_get_attribute failed"); // TODO: better
+    }
+    if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
+        errx("calloc failed");
+    }
 #endif /* !QUEUE_ABSTRACTION */
     ctxt = engine->open();
     while (1) {
@@ -359,7 +365,7 @@ int main(int argc, char **argv)
                 errc("mq_receive failed");
             }
 #else
-        if (-1 == (read = queue_receive(queue /* ... */))) {
+        if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
             errc("queue_receive failed"); // TODO: better
 #endif /* !QUEUE_ABSTRACTION */
         } else {

@@ -2,7 +2,7 @@ include(CheckLibraryExists)
 include(CheckFunctionExists)
 
 set(LIBRARIES )
-# check_library_exists("rt" "mq_open" "lib" HAVE_POSIX_QUEUE)
+check_library_exists("rt" "mq_open" "lib" HAVE_POSIX_QUEUE)
 if(HAVE_POSIX_QUEUE)
     list(APPEND LIBRARIES "rt")
 endif(HAVE_POSIX_QUEUE)

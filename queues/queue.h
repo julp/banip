@@ -8,13 +8,14 @@
 typedef enum {
     QUEUE_ERR_OK,
     QUEUE_ERR_GENERAL_FAILURE,
-    QUEUE_ERR_NOT_SUPPORTED
+    QUEUE_ERR_NOT_SUPPORTED,
+    QUEUE_ERR_NOT_OWNER
 } queue_err_t;
 
 typedef enum {
-    QUEUE_ATTR_X,
-    QUEUE_ATTR_Y,
-    QUEUE_ATTR_Z
+    QUEUE_ATTR_MAX_QUEUE_SIZE,      // in bytes, System V only (even if for POSIX we can get it by: mq_msgsize * mq_maxmsg)
+    QUEUE_ATTR_MAX_MESSAGE_SIZE,    // in bytes, POSIX only
+    QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE // POSIX only
 } queue_attr_t;
 
 /**
