@@ -22,7 +22,7 @@ struct msgbuf {
 
 typedef struct {
     int qid;
-    char *buffer;
+    char *buffer; /* emulate a struct *msgbuf, the real buffer to read or write is the mtext field, ie buffer + sizeof(long) */
     char *filename;
     size_t buffer_size;
 } systemv_queue_t;
@@ -73,6 +73,7 @@ queue_err_t queue_open(void *p, const char *name, int flags)
     key_t key;
     mode_t oldmask;
     systemv_queue_t *q;
+    struct msqid_ds buf;
     char *s, filename[MAXPATHLEN];
 
     q = (systemv_queue_t *) p;
@@ -135,8 +136,12 @@ queue_err_t queue_open(void *p, const char *name, int flags)
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
     }
-    q->buffer_size = 512;
-    if (NULL == (q->buffer = malloc(sizeof(long) + sizeof(q->buffer) * q->buffer_size))) { // TODO: non hardcoded value
+    if (0 != msgctl(q->qid, IPC_STAT, &buf)) {
+        // TODO: error
+        return QUEUE_ERR_GENERAL_FAILURE;
+    }
+    q->buffer_size = buf.msg_qbytes / 8;
+    if (NULL == (q->buffer = malloc(sizeof(long) + sizeof(q->buffer) * q->buffer_size))) {
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
     }
