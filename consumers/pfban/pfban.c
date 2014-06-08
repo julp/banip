@@ -89,12 +89,12 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
     }
 }
 
-static int parse_long(const char *str, long *val)
+static unsigned long parse_ulong(const char *str, unsigned long *val)
 {
     char *endptr;
 
-    *val = strtol(str, &endptr, 10);
-    if ((ERANGE == errno && (LONG_MAX == *val || LONG_MIN == *val)) || (0 != errno && 0 == *val)) {
+    *val = strtoul(str, &endptr, 10);
+    if ((ERANGE == errno && ULONG_MAX == *val) || (0 != errno && 0 == *val)) {
         errx("overflow or underflow for '%s'", str);
         return 0;
     }
@@ -196,9 +196,9 @@ int main(int argc, char **argv)
         switch (c) {
             case 'b':
             {
-                long val;
+                unsigned long val;
 
-                if (parse_long(optarg, &val)) {
+                if (parse_ulong(optarg, &val)) {
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, val); // TODO: check returned value
                 }
                 break;
@@ -240,9 +240,9 @@ int main(int argc, char **argv)
                 break;
             case 's':
             {
-                long val;
+                unsigned long val;
 
-                if (parse_long(optarg, &val)) {
+                if (parse_ulong(optarg, &val)) {
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, val); // TODO: check returned value
                 }
                 break;
@@ -305,7 +305,6 @@ int main(int argc, char **argv)
         if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
             errc("queue_receive failed"); // TODO: better
         } else {
-printf(">%s<\n", buffer);
             engine->handle(ctxt, tablename, buffer);
         }
     }
