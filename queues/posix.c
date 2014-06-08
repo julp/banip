@@ -18,9 +18,6 @@
 
 typedef struct {
     mqd_t mq;
-#ifdef WITH_BUFFER
-    char *buffer;
-#endif
     char *filename;
     struct mq_attr attr;
 } posix_queue_t;
@@ -33,11 +30,7 @@ void *queue_init(void)
         return NULL;
     }
     q->mq = NOT_MQD_T;
-#ifdef WITH_BUFFER
-    q->filename = q->buffer = NULL;
-#else
     q->filename = NULL;
-#endif
     /* default hardcoded values on FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
     q->attr.mq_maxmsg = 10;
     q->attr.mq_msgsize = 1024;
@@ -108,14 +101,6 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
             return QUEUE_ERR_GENERAL_FAILURE;
         }
     }
-#ifdef WITH_BUFFER
-    if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
-        if (NULL == (q->buffer = calloc(q->attr.mq_msgsize + 1, sizeof(*q->buffer)))) {
-            // TODO: error
-            return QUEUE_ERR_GENERAL_FAILURE;
-        }
-    }
-#endif
 
     return QUEUE_ERR_OK;
 }
@@ -154,23 +139,13 @@ int queue_receive(void *p, char *buffer, size_t buffer_size)
 
 queue_err_t queue_send(void *p, const char *msg, int msg_len)
 {
-#if 0
-    long msg_size;
-#endif
     posix_queue_t *q;
 
     q = (posix_queue_t *) p;
-#if 0
     if (msg_len < 0) {
-        msg_size = strlen(msg) + 1;
-    } else {
-        msg_size = msg_len + 1;
+        msg_len = strlen(msg);
     }
-#endif
-    if (msg_len < 0) {
-        msg_len = strlen(msg_len);
-    }
-    if (0 == mq_send(q->mq, msg, msg_len/*msg_size*/, 0)) {
+    if (0 == mq_send(q->mq, msg, msg_len, 0)) {
         return QUEUE_ERR_OK;
     } else {
         // TODO: error
@@ -199,12 +174,6 @@ queue_err_t queue_close(void **p)
             free(q->filename);
             q->filename = NULL;
         }
-#ifdef WITH_BUFFER
-        if (NULL != q->buffer) {
-            free(q->buffer);
-            q->buffer = NULL;
-        }
-#endif
         free(*p);
         *p = NULL;
     }

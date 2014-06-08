@@ -3,9 +3,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifndef QUEUE_ABSTRACTION
-# include <mqueue.h>
-#endif /* !QUEUE_ABSTRACTION */
 
 #include <unistd.h>
 #include <limits.h>
@@ -20,9 +17,7 @@
 
 #include "common.h"
 #include "engine.h"
-#ifdef QUEUE_ABSTRACTION
-# include "queue.h"
-#endif /* QUEUE_ABSTRACTION */
+#include "queue.h"
 
 enum {
     PFBAN_EXIT_SUCCESS = 0,
@@ -120,13 +115,8 @@ static int parse_long(const char *str, long *val)
 }
 
 static void *ctxt = NULL;
-static char *buffer = NULL;
-#ifndef QUEUE_ABSTRACTION
-static mqd_t mq = (mqd_t) -1;
-static const char *queuename = NULL;
-#else
 static void *queue = NULL;
-#endif /* !QUEUE_ABSTRACTION */
+static char *buffer = NULL;
 static const engine_t *engine = NULL;
 static const char *pidfilename = NULL;
 static const char *logfilename = NULL;
@@ -142,19 +132,7 @@ static void cleanup(void)
         free(ctxt);
         ctxt = NULL;
     }
-#ifndef QUEUE_ABSTRACTION
-    if (((mqd_t) -1) != (mq)) {
-        if (0 != mq_close(mq)) {
-            warnc("mq_close failed");
-        }
-        if (0 != mq_unlink(queuename)) {
-            warnc("mq_unlink failed");
-        }
-        mq = (mqd_t) -1;
-    }
-#else
     queue_close(&queue);
-#endif /* !QUEUE_ABSTRACTION */
     if (NULL != pidfilename) {
         if (0 != unlink(pidfilename)) {
             warnc("mq_unlink failed");
@@ -192,30 +170,18 @@ static void on_signal(int signo)
 int main(int argc, char **argv)
 {
     gid_t gid;
-#ifndef QUEUE_ABSTRACTION
-    mode_t omask;
-    struct mq_attr attr;
-#else
-    const char *queuename;
-    unsigned long max_message_size;
-#endif /* !QUEUE_ABSTRACTION */
     struct sigaction sa;
     int c, dFlag, vFlag;
-    const char *tablename;
+    unsigned long max_message_size;
+    const char *queuename, *tablename;
 
     ctxt = NULL;
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
-#ifndef QUEUE_ABSTRACTION
-    /* default hardcoded values on FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = 1024;
-#else
     if (NULL == (queue = queue_init())) {
         errx("queue_init failed"); // TODO: better
     }
-#endif /* !QUEUE_ABSTRACTION */
     atexit(cleanup);
     sa.sa_handler = &on_signal;
     sigemptyset(&sa.sa_mask);
@@ -233,11 +199,7 @@ int main(int argc, char **argv)
                 long val;
 
                 if (parse_long(optarg, &val)) {
-#ifndef QUEUE_ABSTRACTION
-                    attr.mq_msgsize = val;
-#else
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, val); // TODO: check returned value
-#endif /* !QUEUE_ABSTRACTION */
                 }
                 break;
             }
@@ -281,11 +243,7 @@ int main(int argc, char **argv)
                 long val;
 
                 if (parse_long(optarg, &val)) {
-#ifndef QUEUE_ABSTRACTION
-                    attr.mq_maxmsg = val;
-#else
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, val); // TODO: check returned value
-#endif /* !QUEUE_ABSTRACTION */
                 }
                 break;
             }
@@ -331,19 +289,6 @@ int main(int argc, char **argv)
             errc("setgroups failed");
         }
     }
-#ifndef QUEUE_ABSTRACTION
-    omask = umask(0);
-    if (((mqd_t) -1) == (mq = mq_open(queuename, O_CREAT | O_RDONLY | O_EXCL, 0420, &attr))) {
-        errc("mq_open failed");
-    }
-    umask(omask);
-    if (0 != mq_getattr(mq, &attr)) {
-        errc("mq_getattr failed");
-    }
-    if (NULL == (buffer = calloc(attr.mq_msgsize + 1, sizeof(*buffer)))) {
-        errx("calloc failed");
-    }
-#else
     if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
         errx("queue_open failed"); // TODO: better
     }
@@ -353,24 +298,14 @@ int main(int argc, char **argv)
     if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
         errx("calloc failed");
     }
-#endif /* !QUEUE_ABSTRACTION */
     ctxt = engine->open();
     while (1) {
         ssize_t read;
 
-#ifndef QUEUE_ABSTRACTION
-        if (-1 == (read = mq_receive(mq, buffer, /*(size_t)*/ attr.mq_msgsize, NULL))) {
-            // buffer[attr.mq_msgsize] = '\0';
-            if (EMSGSIZE == errno) {
-                warn("message too long (%zi > %ld), skip: %s", read, attr.mq_msgsize, buffer);
-            } else {
-                errc("mq_receive failed");
-            }
-#else
         if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
             errc("queue_receive failed"); // TODO: better
-#endif /* !QUEUE_ABSTRACTION */
         } else {
+printf(">%s<\n", buffer);
             engine->handle(ctxt, tablename, buffer);
         }
     }
