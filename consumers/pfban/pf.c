@@ -22,7 +22,7 @@ static void *pf_open(void)
     pf_data_t *data;
 
     data = malloc(sizeof(*data));
-    if (-1 == (data->fd = open("/dev/pf", O_WRONLY))) {
+    if (-1 == (data->fd = open("/dev/pf", O_RDWR))) {
         errc("failed opening /dev/pf");
     }
 
@@ -37,7 +37,7 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
     struct pfioc_table io;
     struct sockaddr last_src;
     struct addrinfo *res, *resp;
-    struct pfioc_src_node_kill psnk;
+    struct pfioc_state_kill psk;
 
     data = (pf_data_t *) ctxt;
     bzero(&io, sizeof(io));
@@ -59,8 +59,8 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
         errc("ioctl(DIOCRADDADDRS) failed");
     }
     /* kill states */
-    memset(&psnk, 0, sizeof(psnk));
-    memset(&psnk.psnk_src.addr.v.a.mask, 0xff, sizeof(psnk.psnk_src.addr.v.a.mask));
+    memset(&psk, 0, sizeof(psk));
+    memset(&psk.psk_src.addr.v.a.mask, 0xff, sizeof(psk.psk_src.addr.v.a.mask));
     memset(&last_src, 0xff, sizeof(last_src));
     if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
         errc("getaddrinfo failed");
@@ -73,19 +73,19 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
             continue;
         }
         last_src = *(struct sockaddr *)resp->ai_addr;
-        psnk.psnk_af = resp->ai_family;
-        switch (psnk.psnk_af) {
+        psk.psk_af = resp->ai_family;
+        switch (psk.psk_af) {
             case AF_INET:
-                psnk.psnk_src.addr.v.a.addr.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
+                psk.psk_src.addr.v.a.addr.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
                 break;
             case AF_INET6:
-                psnk.psnk_src.addr.v.a.addr.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
+                psk.psk_src.addr.v.a.addr.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
                 break;
             default:
                 freeaddrinfo(res);
-                errx("Unknown address family %d", psnk.psnk_af);
+                errx("Unknown address family %d", psk.psk_af);
         }
-        if (-1 == ioctl(data->fd, DIOCKILLSTATES, &psnk)) {
+        if (-1 == ioctl(data->fd, DIOCKILLSTATES, &psk)) {
             errc("ioctl(DIOCKILLSTATES) failed");
         }
     }
