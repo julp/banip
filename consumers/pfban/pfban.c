@@ -290,6 +290,7 @@ int main(int argc, char **argv)
         }
     }
     if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
+        queue_close(&queue);
         errx("queue_open failed"); // TODO: better
     }
     if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {

@@ -17,6 +17,7 @@ int main(int argc, char **argv)
     }
     if (QUEUE_ERR_OK != queue_open(queue, argv[1], QUEUE_FL_SENDER)) {
         printf("queue_open failed\n");
+        queue_close(&queue);
         return EXIT_FAILURE;
     }
     if (QUEUE_ERR_OK == queue_send(queue, argv[2], -1)) {

@@ -81,7 +81,7 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
             return QUEUE_ERR_GENERAL_FAILURE;
         }
     }
-    if (NOT_MQD_T == (q->mq = mq_open(filename, omask, 0620, &q->attr))) {
+    if (NOT_MQD_T == (q->mq = mq_open(filename, omask, 0660, &q->attr))) {
         if (HAS_FLAG(flags, QUEUE_FL_OWNER)) {
             umask(oldmask);
 #ifdef __FreeBSD__

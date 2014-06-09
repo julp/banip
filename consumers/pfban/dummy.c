@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "engine.h"
@@ -8,8 +9,10 @@ static void *dummy_open(void)
     return NULL;
 }
 
-static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), const char *UNUSED(buffer))
+static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), const char *buffer)
 {
+    fprintf(stderr, "Received: '%s'\n", buffer);
+
     return 1;
 }
 

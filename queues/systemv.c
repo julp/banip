@@ -127,10 +127,10 @@ queue_err_t queue_open(void *p, const char *name, int flags)
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         oldmask = umask(0);
-        q->qid = msgget(key, 0620 | IPC_CREAT | IPC_EXCL);
+        q->qid = msgget(key, 0660 | IPC_CREAT | IPC_EXCL);
         umask(oldmask);
     } else {
-        q->qid = msgget(key, 0620);
+        q->qid = msgget(key, 0660);
     }
     if (-1 == q->qid) {
         // TODO: error
