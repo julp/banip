@@ -4,7 +4,6 @@
 #include <mqueue.h>
 
 #include <unistd.h>
-#include <limits.h>
 #include <grp.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -88,31 +87,6 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
     if (fatal) {
         exit(PFBAN_EXIT_FAILURE);
     }
-}
-
-static int parse_long(const char *str, long *val)
-{
-    char *endptr;
-
-    *val = strtol(str, &endptr, 10);
-    if ((ERANGE == errno && (LONG_MAX == *val || LONG_MIN == *val)) || (0 != errno && 0 == *val)) {
-        errx("overflow or underflow for '%s'", str);
-        return 0;
-    }
-    if (endptr == str) {
-        errx("number expected, no digit found");
-        return 0;
-    }
-    if ('\0' != *endptr) {
-        errx("number expected, non digit found %c in %s", *endptr, str);
-        return 0;
-    }
-    if (*val <= 0) {
-        errx("number should be greater than 0, got %ld", *val);
-        return 0;
-    }
-
-    return 1;
 }
 
 static void *ctxt = NULL;

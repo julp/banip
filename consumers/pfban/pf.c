@@ -32,6 +32,7 @@ static void *pf_open(void)
 static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
 {
     int ret;
+    char *p;
     pf_data_t *data;
     struct pfr_addr addr;
     struct pfioc_table io;
@@ -58,12 +59,54 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
     if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
         errc("ioctl(DIOCRADDADDRS) failed");
     }
-    /* kill states */
+    /**
+     * kill states, taken from pfctl
+     * Copyright (c) 2001 Daniel Hartmeier
+     * Copyright (c) 2002,2003 Henning Brauer
+     **/
     memset(&psk, 0, sizeof(psk));
     memset(&psk.psk_src.addr.v.a.mask, 0xff, sizeof(psk.psk_src.addr.v.a.mask));
     memset(&last_src, 0xff, sizeof(last_src));
+#if 1
+    if (NULL != (p = strchr(buffer, '/'))) {
+        int q, r;
+        long prefix;
+        struct addrinfo hints;
+
+        *p++ = '\0';
+        parse_long(p, &prefix);
+        bzero(&hints, sizeof(hints));
+        hints.ai_flags |= AI_NUMERICHOST;
+        if (0 != (ret = getaddrinfo(buffer, NULL, &hints, &res))) {
+            errc("getaddrinfo failed: %s", gai_strerror(ret));
+        }
+        if (res->ai_family == AF_INET && prefix > 32) {
+            errx("prefix too long for AF_INET");
+        } else if (res->ai_family == AF_INET6 && prefix > 128) {
+            errx("prefix too long for AF_INET6");
+        }
+        q = prefix >> 3;
+        r = prefix & 7;
+        switch (res->ai_family) {
+            case AF_INET:
+                bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.v4));
+                psk.psk_src.addr.v.a.mask.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - prefix)));
+                break;
+            case AF_INET6:
+                bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.v6));
+                if (q > 0) {
+                    memset((void *) &psk.psk_src.addr.v.a.mask.v6, 0xff, q);
+                }
+                if (r > 0) {
+                    *((u_char *) &psk.psk_src.addr.v.a.mask.v6 + q) = (0xff00 >> r) & 0xff;
+                }
+                break;
+        }
+        freeaddrinfo(res);
+    }
+#endif
     if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
-        errc("getaddrinfo failed");
+        errc("getaddrinfo failed: %s", gai_strerror(ret));
     }
     for (resp = res; resp; resp = resp->ai_next) {
         if (NULL == resp->ai_addr) {
