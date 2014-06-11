@@ -29,17 +29,23 @@ static void *pf_open(void)
     return data;
 }
 
-static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
+/**
+ * kill states, taken from pfctl
+ * Copyright (c) 2001 Daniel Hartmeier
+ * Copyright (c) 2002,2003 Henning Brauer
+ **/
+static int pf_handle(void *ctxt, const char *tablename, const char *addrstr)
 {
     int ret;
-    char *p;
     pf_data_t *data;
+    char *p, *buffer;
     struct pfr_addr addr;
     struct pfioc_table io;
     struct sockaddr last_src;
     struct addrinfo *res, *resp;
     struct pfioc_state_kill psk;
 
+    buffer = strdup(addrstr);
     data = (pf_data_t *) ctxt;
     bzero(&io, sizeof(io));
     strlcpy(io.pfrio_table.pfrt_name, tablename, sizeof(io.pfrio_table.pfrt_name));
@@ -47,27 +53,9 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
     io.pfrio_esize = sizeof(addr);
     io.pfrio_size = 1;
     bzero(&addr, sizeof(addr));
-    if (1 == inet_pton(AF_INET, buffer, &addr.pfra_ip4addr)) {
-        addr.pfra_af = AF_INET;
-        addr.pfra_net = 32;
-    } else if (1 == inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr)) {
-        addr.pfra_af = AF_INET6;
-        addr.pfra_net = 128;
-    } else {
-        warn("Valid address expected, got: %s", buffer);
-    }
-    if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
-        errc("ioctl(DIOCRADDADDRS) failed");
-    }
-    /**
-     * kill states, taken from pfctl
-     * Copyright (c) 2001 Daniel Hartmeier
-     * Copyright (c) 2002,2003 Henning Brauer
-     **/
     memset(&psk, 0, sizeof(psk));
     memset(&psk.psk_src.addr.v.a.mask, 0xff, sizeof(psk.psk_src.addr.v.a.mask));
     memset(&last_src, 0xff, sizeof(last_src));
-#if 1
     if (NULL != (p = strchr(buffer, '/'))) {
         int q, r;
         long prefix;
@@ -89,10 +77,12 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
         r = prefix & 7;
         switch (res->ai_family) {
             case AF_INET:
+                inet_pton(AF_INET, buffer, &addr.pfra_ip4addr); // asset(1 == inet_pton)
                 bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.v4));
                 psk.psk_src.addr.v.a.mask.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - prefix)));
                 break;
             case AF_INET6:
+                inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr); // asset(1 == inet_pton)
                 bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.v6));
                 if (q > 0) {
                     memset((void *) &psk.psk_src.addr.v.a.mask.v6, 0xff, q);
@@ -102,9 +92,23 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
                 }
                 break;
         }
+        addr.pfra_net = prefix;
+        addr.pfra_af = res->ai_family;
         freeaddrinfo(res);
+    } else {
+        if (1 == inet_pton(AF_INET, buffer, &addr.pfra_ip4addr)) {
+            addr.pfra_af = AF_INET;
+            addr.pfra_net = 32;
+        } else if (1 == inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr)) {
+            addr.pfra_af = AF_INET6;
+            addr.pfra_net = 128;
+        } else {
+            warn("Valid address expected, got: %s", buffer);
+        }
     }
-#endif
+    if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
+        errc("ioctl(DIOCRADDADDRS) failed");
+    }
     if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
         errc("getaddrinfo failed: %s", gai_strerror(ret));
     }
@@ -133,6 +137,7 @@ static int pf_handle(void *ctxt, const char *tablename, const char *buffer)
         }
     }
     freeaddrinfo(res);
+    free(buffer);
 
     return 1;
 }
