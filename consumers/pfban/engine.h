@@ -3,7 +3,7 @@
 # define X_ENGINE_H
 
 typedef struct {
-    const char const *name;
+    const char * const name;
     void *(*open)(void);
 //     int (*getopt)(void *, int, const char *);
     int (*handle)(void *, const char *, const char *);
