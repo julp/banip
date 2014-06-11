@@ -1,24 +1,18 @@
 #include <stdlib.h>
+#include <stdio.h>
 
+#include "common.h"
 #include "engine.h"
-
-#ifndef __has_attribute
-# define __has_attribute(x) 0
-#endif /* !__has_attribute */
-
-#if __GNUC__ || __has_attribute(unused)
-# define UNUSED(x) UNUSED_ ## x __attribute__((unused))
-#else
-# define UNUSED
-#endif /* UNUSED */
 
 static void *dummy_open(void)
 {
     return NULL;
 }
 
-static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), const char *UNUSED(buffer))
+static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), const char *buffer)
 {
+    fprintf(stderr, "Received: '%s'\n", buffer);
+
     return 1;
 }
 

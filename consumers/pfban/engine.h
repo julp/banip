@@ -19,7 +19,7 @@ typedef struct {
 void _verr(int, int, const char *, ...);
 
 // TODO: move it to a separated file
-int parse_long(const char *, long *);
+int parse_ulong(const char *, unsigned long *);
 
 const engine_t *get_default_engine(void);
 const engine_t *get_engine_by_name(const char *);

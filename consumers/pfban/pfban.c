@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <mqueue.h>
 
 #include <unistd.h>
 #include <grp.h>
@@ -13,11 +12,9 @@
 #include <stdarg.h>
 #include <time.h>
 
+#include "common.h"
 #include "engine.h"
-
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-#define STR_LEN(str) (ARRAY_SIZE(str) - 1)
-#define STR_SIZE(str) (ARRAY_SIZE(str))
+#include "queue.h"
 
 enum {
     PFBAN_EXIT_SUCCESS = 0,
@@ -90,9 +87,8 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
 }
 
 static void *ctxt = NULL;
+static void *queue = NULL;
 static char *buffer = NULL;
-static mqd_t mq = (mqd_t) -1;
-static const char *queuename = NULL;
 static const engine_t *engine = NULL;
 static const char *pidfilename = NULL;
 static const char *logfilename = NULL;
@@ -108,15 +104,7 @@ static void cleanup(void)
         free(ctxt);
         ctxt = NULL;
     }
-    if (((mqd_t) -1) != (mq)) {
-        if (0 != mq_close(mq)) {
-            warnc("mq_close failed");
-        }
-        if (0 != mq_unlink(queuename)) {
-            warnc("mq_unlink failed");
-        }
-        mq = (mqd_t) -1;
-    }
+    queue_close(&queue);
     if (NULL != pidfilename) {
         if (0 != unlink(pidfilename)) {
             warnc("mq_unlink failed");
@@ -154,19 +142,18 @@ static void on_signal(int signo)
 int main(int argc, char **argv)
 {
     gid_t gid;
-    mode_t omask;
-    struct mq_attr attr;
     struct sigaction sa;
     int c, dFlag, vFlag;
-    const char *tablename;
+    unsigned long max_message_size;
+    const char *queuename, *tablename;
 
     ctxt = NULL;
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
-    /* default hardcoded values on FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = 1024;
+    if (NULL == (queue = queue_init())) {
+        errx("queue_init failed"); // TODO: better
+    }
     atexit(cleanup);
     sa.sa_handler = &on_signal;
     sigemptyset(&sa.sa_mask);
@@ -181,10 +168,10 @@ int main(int argc, char **argv)
         switch (c) {
             case 'b':
             {
-                long val;
+                unsigned long val;
 
-                if (parse_long(optarg, &val)) {
-                    attr.mq_msgsize = val;
+                if (parse_ulong(optarg, &val)) {
+                    queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, val); // TODO: check returned value
                 }
                 break;
             }
@@ -225,10 +212,10 @@ int main(int argc, char **argv)
                 break;
             case 's':
             {
-                long val;
+                unsigned long val;
 
-                if (parse_long(optarg, &val)) {
-                    attr.mq_maxmsg = val;
+                if (parse_ulong(optarg, &val)) {
+                    queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, val); // TODO: check returned value
                 }
                 break;
             }
@@ -274,32 +261,27 @@ int main(int argc, char **argv)
             errc("setgroups failed");
         }
     }
-    omask = umask(0);
-    if (((mqd_t) -1) == (mq = mq_open(queuename, O_CREAT | O_RDONLY | O_EXCL, 0420, &attr))) {
-        errc("mq_open failed");
+    if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
+        queue_close(&queue);
+        errx("queue_open failed"); // TODO: better
     }
-    umask(omask);
-    if (0 != mq_getattr(mq, &attr)) {
-        errc("mq_getattr failed");
+    if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {
+        errx("queue_get_attribute failed"); // TODO: better
     }
-    if (NULL == (buffer = calloc(attr.mq_msgsize + 1, sizeof(*buffer)))) {
+    if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
         errx("calloc failed");
     }
     ctxt = engine->open();
     while (1) {
         ssize_t read;
 
-        if (-1 == (read = mq_receive(mq, buffer, /*(size_t)*/ attr.mq_msgsize, NULL))) {
-            // buffer[attr.mq_msgsize] = '\0';
-            if (EMSGSIZE == errno) {
-                warn("message too long (%zi > %ld), skip: %s", read, attr.mq_msgsize, buffer);
-            } else {
-                errc("mq_receive failed");
-            }
+        if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
+            errc("queue_receive failed"); // TODO: better
         } else {
             engine->handle(ctxt, tablename, buffer);
         }
     }
+    /* not reached */
 
     return PFBAN_EXIT_SUCCESS;
 }

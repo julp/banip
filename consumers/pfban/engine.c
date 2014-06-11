@@ -33,12 +33,12 @@ static const engine_t *available_engines[] = {
 // TODO: move it to a separated file
 #include <stdlib.h>
 #include <limits.h>
-int parse_long(const char *str, long *val)
+int parse_ulong(const char *str, unsigned long *val)
 {
     char *endptr;
 
-    *val = strtol(str, &endptr, 10);
-    if ((ERANGE == errno && (LONG_MAX == *val || LONG_MIN == *val)) || (0 != errno && 0 == *val)) {
+    *val = strtoul(str, &endptr, 10);
+    if ((ERANGE == errno && ULONG_MAX == *val) || (0 != errno && 0 == *val)) {
         errx("overflow or underflow for '%s'", str);
         return 0;
     }
