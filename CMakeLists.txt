@@ -8,9 +8,8 @@ set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES} Maintainer")
 set(SOURCES "engine.c;")
 set(LIBRARIES "queue;")
 
-include_directories(${PROJECT_SOURCE_DIR}/../../queues)
-
-add_subdirectory(${PROJECT_SOURCE_DIR}/../../queues queues)
+include_directories(queues)
+add_subdirectory(queues)
 
 if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
     add_definitions(-DWITH_PF)
@@ -41,16 +40,16 @@ list(APPEND SOURCES dummy.c)
 
 add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 
-add_executable(pfban $<TARGET_OBJECTS:__common_sources> pfban.c)
-target_link_libraries(pfban ${LIBRARIES})
+add_executable(banipd $<TARGET_OBJECTS:__common_sources> banipd.c)
+target_link_libraries(banipd ${LIBRARIES})
+
+add_executable(banip-cli banip-cli.c)
+target_link_libraries(banip-cli queue)
 
 # Programs for testing
 add_executable(pftest $<TARGET_OBJECTS:__common_sources> pftest.c)
 target_link_libraries(pftest ${LIBRARIES})
 
-add_executable(bansend bansend.c)
-target_link_libraries(bansend queue)
+add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS banipd pftest)
 
-add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS pfban pftest)
-
-install(TARGETS pfban RUNTIME DESTINATION sbin)
+install(TARGETS banipd RUNTIME DESTINATION sbin)

@@ -1,6 +1,6 @@
 # vmod_msgsend
 
-Send POSIX messages from Varnish 4 to another process
+Send POSIX or System V messages from Varnish 4 to another process
 
 ## Synopsis
 
@@ -28,7 +28,7 @@ First, you'll need:
 
 Then, to build this module:
 ```
-cd .../libvmod-msgsend/
+cd .../banip/clients/varnish4
 cmake . -DVARNISHSRC:PATH=/path/to/varnish/sources # or build it into an other directory
 make
 (sudo) make install
@@ -37,17 +37,17 @@ make
 ## Usage
 
 ```
-import msgsend;
+vcl 4.0;
+
+import msgsend; # from "/a/non/standard/place/"
 
 sub vcl_init {
-    new queue = msgsend.mqueue("/foo");
+    new banip = msgsend.mqueue("/banip");
 }
 
 sub vcl_recv {
-    queue.sendmsg("" + client.ip + " asks " + req.url);
+    if (...) {
+        banip.sendmsg("" + client.ip); # sadly "" + is needed for explicit cast from ip to string
+    }
 }
 ```
-
-For real applications, see content of `consumers/` subdirectory.
-
-For example, by linking it to [a redis or memcached backend](https://github.com/julp/libvmod-keystore), you can dynamically (ip) ban spammers and/or prevent brute-force.

@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# PROVIDE: banipd
+# REQUIRE: LOGIN cleanvar
+# BEFORE: varnishd
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="banipd"
+rcvar="${name}_enable"
+
+load_rc_config ${name}
+
+pidfile="/var/run/${name}.pid"
+
+: ${banipd_enable:="NO"}
+: ${banipd_table:="blacklist"}
+: ${banipd_queue:="/banipd"}
+: ${banipd_group:="varnish"}
+: ${banipd_log:="/var/log/banipd.log"}
+: ${banipd_flags:="-d -g ${banipd_group} -p ${pidfile} -l ${banipd_log} -t ${banipd_table} -q ${banipd_queue}"}
+
+command="/usr/local/sbin/banipd"
+procname="${command}" # Even if FreeBSD has a pidfile, it looks also for processus name
+extra_commands="status"
+
+run_rc_command "$1"

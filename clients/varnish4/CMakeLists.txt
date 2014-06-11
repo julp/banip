@@ -7,7 +7,7 @@ project(libvmod-msgsend C)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 include(VarnishMOD)
 
-add_subdirectory(queues)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../../queues queues)
 
 declare_vmod(
     INSTALL
@@ -15,5 +15,5 @@ declare_vmod(
     VCC ${PROJECT_SOURCE_DIR}/vmod_msgsend.vcc
     SOURCES ${PROJECT_SOURCE_DIR}/vmod_msgsend.c
     ADDITIONNAL_LIBRARIES queue
-    ADDITIONNAL_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/queues
+    ADDITIONNAL_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/../../queues
 )

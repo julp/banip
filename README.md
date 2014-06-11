@@ -1,8 +1,12 @@
-# pfban
+# banipd
+
+Ban an IP address on demand through a POSIX or System V queue
+
+Prefered queue implementation is POSIX one (more flexible) - fallback to System V one if POSIX queue is not available.
 
 ## Usage
 
-`pfban [options] -q <queue name> -t <table name>`
+`banipd [options] -q <queue name> -t <table name>`
 
 * `-v/--verbose`: be verbose
 * `-d/--daemonize`: daemonize (default: off)
@@ -43,7 +47,7 @@ In the future? (status: incomplete)
 ## Installation
 
 ```
-cd .../libvmod-msgsend/consumers/pfban
+cd .../banip
 cmake . # or build it into an other directory
 make
 (sudo) make install
@@ -53,7 +57,7 @@ make
 
 ### Who can send (write) message
 
-Create a specific group and run varnish and this program under it (in fact, this is mandatory, else you'll get "permission denied" error, because queue is not writable by "others")
+Create a specific group and run varnish or any client and this program under it (in fact, this is mandatory, else you'll get "permission denied" error, because queue is not writable by "others")
 
 ### Always keep an access to your host
 
@@ -71,7 +75,7 @@ pass in quick log on ... inet proto tcp from <whitelist> ... port ssh
 block quick from <blacklist>
 # ...
 ```
-Note: an alternate approach, specific to PF, is to prevently add these addresses by negating them.
+Note: an alternate approach, specific to PF, is to prevently add these addresses by negating them (`echo "!A.B.C.D" >> /etc/pf.table.blacklist`).
 
 ### Rotating log
 
@@ -80,22 +84,4 @@ Send a USR1 signal when rotating log
 /etc/newsyslog.conf:
 ```
 /.../pfban.log root:wheel 600 <other attributes> /.../pfban.pid 30
-```
-
-## Interface with Varnish
-
-```
-vcl 4.0;
-
-import msgsend; # from "/a/non/standard/place/"
-
-sub vcl_init {
-    new pfban = msgsend.mqueue("/pfban");
-}
-
-sub vcl_recv {
-    if (...) {
-        pfban.sendmsg("" + client.ip); # "" + is needed for explicit cast from ip to string
-    }
-}
 ```
