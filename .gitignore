@@ -11,5 +11,5 @@ CMakeCache.txt
 cmake_install.cmake
 install_manifest.txt
 
-/clients/varnish4/src/vcc_if.c
-/clients/varnish4/src/vcc_if.h
+/clients/varnish4/vcc_if.c
+/clients/varnish4/vcc_if.h
