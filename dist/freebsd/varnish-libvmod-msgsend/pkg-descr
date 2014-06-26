@@ -1,3 +1,3 @@
-A Varnish module to send POSIX messages from Varnish 4 to another process
+A Varnish module to request IP bans by sending POSIX messages from Varnish 4 to another process (banipd)
 
-WWW: https://github.com/julp/libvmod-msgsend
+WWW: https://github.com/julp/banip

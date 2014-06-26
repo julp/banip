@@ -12,9 +12,8 @@ LICENSE=        BSD
 
 USE_GITHUB=     yes
 GH_ACCOUNT=     julp
-GH_COMMIT=      453d34d
+GH_COMMIT=      72105b5
 GH_TAGNAME=     ${GH_COMMIT}
-GH_PROJECT=     ${DISTNAME}
 
 USE_RC_SUBR=    banipd
 USES=           cmake:outsource
