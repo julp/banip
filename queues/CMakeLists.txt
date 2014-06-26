@@ -24,7 +24,9 @@ configure_file(
     @ONLY
 )
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(queue STATIC EXCLUDE_FROM_ALL "${SOURCES}")
+set_target_properties(queue PROPERTIES COMPILE_FLAGS "-fPIC")
 if(LIBRARIES)
     target_link_libraries(queue ${LIBRARIES})
 endif(LIBRARIES)
