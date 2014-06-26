@@ -52,4 +52,4 @@ target_link_libraries(pftest ${LIBRARIES})
 
 add_custom_target(test COMMAND find ${CMAKE_SOURCE_DIR}/tests/ -name '*.sh' -exec bash {} "\;" DEPENDS banipd pftest)
 
-install(TARGETS banipd RUNTIME DESTINATION sbin)
+install(TARGETS banipd banip-cli RUNTIME DESTINATION sbin)
