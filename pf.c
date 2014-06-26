@@ -58,11 +58,11 @@ static int pf_handle(void *ctxt, const char *tablename, const char *addrstr)
     memset(&last_src, 0xff, sizeof(last_src));
     if (NULL != (p = strchr(buffer, '/'))) {
         int q, r;
-        long prefix;
+        unsigned long prefix;
         struct addrinfo hints;
 
         *p++ = '\0';
-        parse_long(p, &prefix);
+        parse_ulong(p, &prefix);
         bzero(&hints, sizeof(hints));
         hints.ai_flags |= AI_NUMERICHOST;
         if (0 != (ret = getaddrinfo(buffer, NULL, &hints, &res))) {
@@ -77,12 +77,12 @@ static int pf_handle(void *ctxt, const char *tablename, const char *addrstr)
         r = prefix & 7;
         switch (res->ai_family) {
             case AF_INET:
-                inet_pton(AF_INET, buffer, &addr.pfra_ip4addr); // asset(1 == inet_pton)
+                inet_pton(AF_INET, buffer, &addr.pfra_ip4addr); // assert(1 == inet_pton)
                 bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.v4));
                 psk.psk_src.addr.v.a.mask.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - prefix)));
                 break;
             case AF_INET6:
-                inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr); // asset(1 == inet_pton)
+                inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr); // assert(1 == inet_pton)
                 bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.v6));
                 if (q > 0) {
                     memset((void *) &psk.psk_src.addr.v.a.mask.v6, 0xff, q);
