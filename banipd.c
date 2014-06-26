@@ -16,14 +16,6 @@
 #include "engine.h"
 #include "queue.h"
 
-enum {
-    PFBAN_EXIT_SUCCESS = 0,
-    PFBAN_EXIT_FAILURE,
-    PFBAN_EXIT_USAGE
-};
-
-extern char *__progname;
-
 static char optstr[] = "b:e:g:l:p:q:s:t:dhv";
 
 static struct option long_options[] =
@@ -48,7 +40,7 @@ static void usage(void) {
         __progname,
         NULL == strrchr(optstr, ':') ? optstr : strrchr(optstr, ':') + 1
     );
-    exit(PFBAN_EXIT_USAGE);
+    exit(BANIPD_EXIT_USAGE);
 }
 
 static FILE *err_file = NULL;
@@ -82,7 +74,7 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
     }
     fprintf(err_file, "\n");
     if (fatal) {
-        exit(PFBAN_EXIT_FAILURE);
+        exit(BANIPD_EXIT_FAILURE);
     }
 }
 
@@ -283,5 +275,5 @@ int main(int argc, char **argv)
     }
     /* not reached */
 
-    return PFBAN_EXIT_SUCCESS;
+    return BANIPD_EXIT_SUCCESS;
 }

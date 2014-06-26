@@ -1,3 +1,6 @@
+#ifndef COMMON_H
+
+# define COMMON_H
 
 # ifndef __has_attribute
 #  define __has_attribute(x) 0
@@ -21,3 +24,13 @@
 
 # define UNSET_FLAG(value, flag) \
     ((value) &= ~(flag))
+
+enum {
+    BANIPD_EXIT_SUCCESS = 0,
+    BANIPD_EXIT_FAILURE,
+    BANIPD_EXIT_USAGE
+};
+
+extern char *__progname;
+
+#endif /* COMMON_H */

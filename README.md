@@ -1,4 +1,4 @@
-# banipd
+# banip
 
 Ban an IP address on demand through a POSIX or System V queue
 
@@ -83,5 +83,5 @@ Send a USR1 signal when rotating log
 
 /etc/newsyslog.conf:
 ```
-/.../pfban.log root:wheel 600 <other attributes> /.../pfban.pid 30
+/.../banipd.log root:wheel 600 <other attributes> /.../banipd.pid 30
 ```
