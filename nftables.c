@@ -14,7 +14,7 @@
 /*
 nft add table ip filter
 nft add chain ip filter input
-nft add set filter blacklist { type ipv4_address\;}
+nft add set filter blacklist { type ipv4_addr\;}
 nft add rule ip filter input ip saddr @blacklist drop
 
 # add element(s) to blacklist
@@ -22,6 +22,8 @@ nft add element filter blacklist { 192.168.3.4 }
 
 # print blacklist elements
 nft list set filter blacklist
+
+nft export json
 */
 
 /*
@@ -51,8 +53,12 @@ static void *nftables_open(void)
     }
     data->portid = mnl_socket_get_portid(data->nl);
     data->s = nft_set_alloc();
+#if 0
     data->e = nft_set_elem_alloc();
     nft_set_elem_add(data->s, data->e);
+#else
+    data->e = NULL;
+#endif
     nft_set_attr_set(data->s, NFT_SET_ATTR_TABLE, "filter");
 
     return data;
@@ -70,9 +76,21 @@ static int nftables_handle(void *ctxt, const char *tablename, const char *buffer
     data = (nftables_data_t *) ctxt;
     seq = time(NULL);
     if (1 == inet_pton(AF_INET, buffer, &addr4)) {
+#if 1
+        uint32_t xxx;
+        struct nft_set_elem *e;
+
+        xxx = 0x3;
+        e = nft_set_elem_alloc();
+#endif
         family = NFPROTO_IPV4;
         nft_set_attr_set(data->s, NFT_SET_ATTR_NAME, tablename);
+#if 0
         nft_set_elem_attr_set(data->e, NFT_SET_ELEM_ATTR_KEY, &addr4, sizeof(addr4));
+#else
+        nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &xxx, sizeof(xxx));
+        nft_set_elem_add(data->s, e);
+#endif
     } else if (1 == inet_pton(AF_INET6, buffer, &addr6)) {
         family = NFPROTO_IPV6;
         nft_set_attr_set(data->s, NFT_SET_ATTR_NAME, tablename); // TODO: le nom doit être différent ip/ip6?
@@ -89,6 +107,7 @@ static int nftables_handle(void *ctxt, const char *tablename, const char *buffer
     ret = mnl_socket_recvfrom(data->nl, data->buf, MNL_SOCKET_BUFFER_SIZE);
     while (ret > 0) {
         if ((ret = mnl_cb_run(data->buf, ret, seq, data->portid, NULL, NULL)) <= 0) {
+errc("mnl_cb_run failed");
             break;
         }
         ret = mnl_socket_recvfrom(data->nl, data->buf, MNL_SOCKET_BUFFER_SIZE);
@@ -105,6 +124,10 @@ static void nftables_close(void *ctxt)
     nftables_data_t *data;
 
     data = (nftables_data_t *) ctxt;
+    if (NULL != data->e) {
+        nft_set_elem_free(data->e);
+        data->e = NULL;
+    }
     if (NULL != data->s) {
         nft_set_free(data->s);
         data->s = NULL;

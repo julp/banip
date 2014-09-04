@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 
 project(libvmod-msgsend C)
 
-# cmake . -DVARNISHSRC:PATH=$HOME/Downloads/varnish-4.0.0/
+# cmake . -DVARNISHSRC:PATH=$HOME/Downloads/varnish-4.0.1/
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 include(VarnishMOD)

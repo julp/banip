@@ -33,6 +33,9 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
     list(APPEND LIBRARIES "mnl")
     list(APPEND LIBRARIES "nftnl")
     list(APPEND SOURCES nftables.c)
+    # XXX
+    #add_executable(nft-set-elem-add nft-set-elem-add.c)
+    #target_link_libraries(nft-set-elem-add ${LIBRARIES})
 
 endif(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
