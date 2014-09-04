@@ -9,9 +9,9 @@ static void *dummy_open(void)
     return NULL;
 }
 
-static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), const char *buffer)
+static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), addr_t addr)
 {
-    fprintf(stderr, "Received: '%s'\n", buffer);
+    fprintf(stderr, "Received: '%s'\n", addr.humanrepr);
 
     return 1;
 }

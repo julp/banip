@@ -23,7 +23,7 @@ static void *npf_open(void)
     return data;
 }
 
-static int npf_handle(void *ctxt, const char *tablename, const char *buffer)
+static int npf_handle(void *ctxt, const char *tablename, addr_t addr)
 {
     int ret;
     npf_data_t *data;
@@ -40,15 +40,28 @@ static int npf_handle(void *ctxt, const char *tablename, const char *buffer)
 #endif /* NPF_ALLOW_NAMED_TABLE */
     nct.nct_cmd = NPF_CMD_TABLE_ADD;
     nct.nct_data.ent.mask = NPF_NO_NETMASK;
-    if (1 == inet_pton(AF_INET, buffer, &sin.sin_addr)) {
-        nct.nct_data.ent.alen = sizeof(struct in_addr);
-        memcpy(&nct.nct_data.ent.addr, &sin.sin_addr, sizeof(sin.sin_addr));
-    } else if (1 == inet_pton(AF_INET6, buffer, &sin6.sin_addr)) {
-        nct.nct_data.ent.alen = sizeof(struct in6_addr);
-        memcpy(&nct.nct_data.ent.addr, &sin6.sin6_addr, sizeof(sin6.sin6_addr));
-    } else {
-        warn("Valid address expected, got: %s", buffer);
+#if 0
+    // http://nxr.netbsd.org/xref/src/usr.sbin/npf/npfctl/npf_data.c#158
+    uint8_t *ap;
+
+    ap = addr.sa.v6 + (addr.netmask / 8) - 1;
+    while (ap >= addr.sa.v6) {
+        for (int j = 8; j > 0; j--) {
+            if (*ap & 1) {
+                break;
+            }
+            *ap >>= 1;
+            --addr.netmask;
+            if (0 == addr.netmask) {
+                break;
+            }
+        }
+        ap--;
     }
+    nct.nct_data.ent.mask = addr.netmask;
+#endif
+    nct.nct_data.ent.alen = addr.sa_size;
+    memcpy(&nct.nct_data.ent.addr, &addr.sa, addr.sa_size);
     if (-1 == ioctl(data->fd, IOC_NPF_TABLE, &nct)) {
         errc("ioctl(IOC_NPF_TABLE) failed");
     }

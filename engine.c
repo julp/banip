@@ -30,34 +30,6 @@ static const engine_t *available_engines[] = {
     NULL
 };
 
-// TODO: move it to a separated file
-#include <stdlib.h>
-#include <limits.h>
-int parse_ulong(const char *str, unsigned long *val)
-{
-    char *endptr;
-
-    *val = strtoul(str, &endptr, 10);
-    if ((ERANGE == errno && ULONG_MAX == *val) || (0 != errno && 0 == *val)) {
-        errx("overflow or underflow for '%s'", str);
-        return 0;
-    }
-    if (endptr == str) {
-        errx("number expected, no digit found");
-        return 0;
-    }
-    if ('\0' != *endptr) {
-        errx("number expected, non digit found %c in %s", *endptr, str);
-        return 0;
-    }
-    if (*val <= 0) {
-        errx("number should be greater than 0, got %ld", *val);
-        return 0;
-    }
-
-    return 1;
-}
-
 const engine_t *get_default_engine(void)
 {
     /* NULL can be returned, caller is responsible to check this later */
