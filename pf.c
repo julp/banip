@@ -6,11 +6,14 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <net/pfvar.h>
+#undef v4
+#undef v6
 #include <sys/ioctl.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "err.h"
 #include "engine.h"
 
 typedef struct {
@@ -78,12 +81,12 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
         switch (res->ai_family) {
             case AF_INET:
                 inet_pton(AF_INET, buffer, &addr.pfra_ip4addr); // assert(1 == inet_pton)
-                bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.v4));
+                bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.pfa.v4));
                 psk.psk_src.addr.v.a.mask.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - prefix)));
                 break;
             case AF_INET6:
                 inet_pton(AF_INET6, buffer, &addr.pfra_ip6addr); // assert(1 == inet_pton)
-                bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.v6));
+                bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.pfa.v6));
                 if (q > 0) {
                     memset((void *) &psk.psk_src.addr.v.a.mask.v6, 0xff, q);
                 }
@@ -109,20 +112,21 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
 #else
     addr.pfra_af = parsed_addr.fa;
     addr.pfra_net = parsed_addr.netmask;
+    memcpy(&addr.pfra_ip6addr, &parsed_addr.sa.v6, sizeof(parsed_addr.sa.v6));
     if (AF_INET == addr.pfra_af && addr.pfra_net < 32) {
-        bzero(&psk.psk_src.addr.v.a.mask.v4, sizeof(psk.psk_src.addr.v.a.mask.v4));
-        psk.psk_src.addr.v.a.mask.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - prefix)));
+        bzero(&psk.psk_src.addr.v.a.mask.pfa.v4, sizeof(psk.psk_src.addr.v.a.mask.pfa.v4));
+        psk.psk_src.addr.v.a.mask.pfa.v4.s_addr = htonl((u_int32_t) (0xffffffffffULL << (32 - parsed_addr.netmask)));
     } else if (AF_INET6 == addr.pfra_af && addr.pfra_net < 128) {
         int q, r;
 
         q = addr.pfra_net >> 3;
         r = addr.pfra_net & 7;
-        bzero(&psk.psk_src.addr.v.a.mask.v6, sizeof(psk.psk_src.addr.v.a.mask.v6));
+        bzero(&psk.psk_src.addr.v.a.mask.pfa.v6, sizeof(psk.psk_src.addr.v.a.mask.pfa.v6));
         if (q > 0) {
-            memset((void *) &psk.psk_src.addr.v.a.mask.v6, 0xff, q);
+            memset((void *) &psk.psk_src.addr.v.a.mask.pfa.v6, 0xff, q);
         }
         if (r > 0) {
-            *((u_char *) &psk.psk_src.addr.v.a.mask.v6 + q) = (0xff00 >> r) & 0xff;
+            *((u_char *) &psk.psk_src.addr.v.a.mask.pfa.v6 + q) = (0xff00 >> r) & 0xff;
         }
     }
 #endif
@@ -132,7 +136,7 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
 #if 0
     if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
 #else
-    if (0 != (ret = getaddrinfo(addr.humanrepr, NULL, NULL, &res))) {
+    if (0 != (ret = getaddrinfo(parsed_addr.humanrepr, NULL, NULL, &res))) {
 #endif
         errc("getaddrinfo failed: %s", gai_strerror(ret));
     }
@@ -147,10 +151,10 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
         psk.psk_af = resp->ai_family;
         switch (psk.psk_af) {
             case AF_INET:
-                psk.psk_src.addr.v.a.addr.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
+                psk.psk_src.addr.v.a.addr.pfa.v4 = ((struct sockaddr_in *) resp->ai_addr)->sin_addr;
                 break;
             case AF_INET6:
-                psk.psk_src.addr.v.a.addr.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
+                psk.psk_src.addr.v.a.addr.pfa.v6 = ((struct sockaddr_in6 *) resp->ai_addr)->sin6_addr;
                 break;
             default:
                 freeaddrinfo(res);
