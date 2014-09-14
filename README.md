@@ -70,12 +70,12 @@ table <blacklist> persist file "/etc/pf.table.blacklist"
 # Default behavior
 block log all
 # Allow at least SSH access
-pass in quick log on ... inet proto tcp from <whitelist> ... port ssh
+pass in quick log on ... proto tcp from <whitelist> ... port ssh
 # Deny all suspicious hosts
 block quick from <blacklist>
 # ...
 ```
-Note: an alternate approach, specific to PF, is to prevently add these addresses by negating them (`echo "!A.B.C.D" >> /etc/pf.table.blacklist`).
+Note: an alternate approach, specific to PF, is to prevently add these addresses by negating them (`echo \!A.B.C.D >> /etc/pf.table.blacklist`).
 
 ### Rotating log
 
