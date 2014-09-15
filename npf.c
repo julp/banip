@@ -12,7 +12,7 @@ typedef struct {
     int fd;
 } npf_data_t;
 
-static void *npf_open(void)
+static void *npf_open(const char *UNUSED(tablename))
 {
     npf_data_t *data;
 

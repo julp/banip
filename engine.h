@@ -6,9 +6,9 @@
 
 typedef struct {
     const char * const name;
-    void *(*open)(void);
+    void *(*open)(const char *);
 //     int (*getopt)(void *, int, const char *);
-    int (*handle)(void *, const char *, addr_t addr);
+    int (*handle)(void *, const char *, addr_t);
     void (*close)(void *);
 } engine_t;
 

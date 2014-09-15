@@ -41,7 +41,7 @@ typedef struct {
     char buf[MNL_SOCKET_BUFFER_SIZE];
 } nftables_data_t;
 
-static void *nftables_open(void)
+static void *nftables_open(const char *UNUSED(tablename))
 {
     nftables_data_t *data;
 

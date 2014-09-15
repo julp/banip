@@ -20,7 +20,7 @@ typedef struct {
     int fd;
 } pf_data_t;
 
-static void *pf_open(void)
+static void *pf_open(const char *tablename)
 {
     pf_data_t *data;
 
@@ -28,6 +28,28 @@ static void *pf_open(void)
     if (-1 == (data->fd = open("/dev/pf", O_RDWR))) {
         errc("failed opening /dev/pf");
     }
+#if 0
+    {
+        struct pfioc_table io;
+        struct pfr_table table;
+
+        bzero(&io, sizeof(io));
+        io.pfrio_buffer = &table;
+        io.pfrio_size = 1;
+        io.pfrio_esize = sizeof(table);
+        io.pfrio_flags = PFR_TFLAG_PERSIST;
+        if (strlen(tablename) >= PF_TABLE_NAME_SIZE) {
+            // error
+        }
+        if (strlcpy(table.pfrt_name, tablename, sizeof(table.pfrt_name)) >= sizeof(table.pfrt_name)) {
+            // error
+        }
+        table.pfrt_anchor[0] = '\0';
+        if (-1 == ioctl(dev, DIOCRADDTABLES, &io)) {
+            // error
+        }
+    }
+#endif
 
     return data;
 }
@@ -55,7 +77,7 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
     io.pfrio_esize = sizeof(addr);
     io.pfrio_size = 1;
     bzero(&addr, sizeof(addr));
-    memset(&psk, 0, sizeof(psk));
+    bzero(&psk, sizeof(psk));
     memset(&psk.psk_src.addr.v.a.mask, 0xff, sizeof(psk.psk_src.addr.v.a.mask));
     memset(&last_src, 0xff, sizeof(last_src));
 #if 0

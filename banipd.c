@@ -94,7 +94,9 @@ static void cleanup(void)
         buffer = NULL;
     }
     if (NULL != ctxt) {
-        engine->close(ctxt);
+        if (NULL != engine->close) {
+            engine->close(ctxt);
+        }
         free(ctxt);
         ctxt = NULL;
     }
@@ -266,7 +268,9 @@ int main(int argc, char **argv)
     if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
         errx("calloc failed");
     }
-    ctxt = engine->open();
+    if (NULL != engine->open) {
+        ctxt = engine->open(tablename);
+    }
     while (1) {
         ssize_t read;
 

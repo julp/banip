@@ -7,6 +7,8 @@
 #include "err.h"
 #include "engine.h"
 
+#define TABLENAME "blacklist"
+
 void _verr(int fatal, int errcode, const char *fmt, ...)
 {
     va_list ap;
@@ -43,10 +45,14 @@ int main(int argc, char **argv)
         errx("no engine found");
     }
 
-    ctxt = engine->open();
+    if (NULL != engine->open) {
+        ctxt = engine->open(TABLENAME);
+    }
     parse_addr("1.2.3.4", &addr);
-    engine->handle(ctxt, "blacklist", addr);
-    engine->close(ctxt);
+    engine->handle(ctxt, TABLENAME, addr);
+    if (NULL != engine->close) {
+        engine->close(ctxt);
+    }
     free(ctxt);
 
     return EXIT_SUCCESS;
