@@ -21,6 +21,13 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 
 ## Supported firewalls
 
+| Name | Status | CIDR support | State killing support |
+| ---- | ------ | ------------ | --------------------- |
+| PF | in use | yes | yes |
+| NPF | for testing | no (only in NetBSD-current?) | not available |
+| iptables/ipset | not tested | no (todo) | not available |
+| nftables | broken | ? | not available |
+
 ### PF: (OpenBSD) Packet filter
 
 * Create a table in your pf.conf (eg: `table <blacklist> persist file "/etc/pf.table.blacklist"`)
@@ -34,6 +41,22 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 WARNING: for now, NPF gives a numeric identifier to tables but they could change when reloading your rules.
 
 Table names are only supported in NetBSD-current.
+
+### iptables with ipset (Linux)
+
+1. Install ipset
+
+2. Create 2 sets named blacklist[46]:
+```
+ipset create blacklist4 hash:net family inet
+ipset create blacklist6 hash:net family inet6
+```
+
+3. Add 2 rules to iptables
+```
+iptables -I INPUT -m set --match-set blacklist4 src -j DROP
+iptables -I INPUT -m set --match-set blacklist6 src -j DROP
+```
 
 ### nftables (Linux >= 3.13)
 

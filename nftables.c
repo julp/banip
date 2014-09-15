@@ -9,6 +9,7 @@
 #include <libmnl/libmnl.h>
 #include <libnftnl/set.h>
 
+#include "common.h"
 #include "err.h"
 #include "engine.h"
 

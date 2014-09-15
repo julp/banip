@@ -29,10 +29,10 @@ if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
     # Linux
-    add_definitions(-DWITH_NFTABLES)
+    add_definitions(-DWITH_NFTABLES -DWITH_IPSET)
     list(APPEND LIBRARIES "mnl")
     list(APPEND LIBRARIES "nftnl")
-    list(APPEND SOURCES nftables.c)
+    list(APPEND SOURCES nftables.c ipset.c)
     # XXX
     #add_executable(nft-set-elem-add nft-set-elem-add.c)
     #target_link_libraries(nft-set-elem-add ${LIBRARIES})
