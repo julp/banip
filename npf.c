@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "err.h"
 #include "engine.h"
 
 typedef struct {
