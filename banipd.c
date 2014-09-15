@@ -13,8 +13,10 @@
 #include <time.h>
 
 #include "common.h"
+#include "err.h"
 #include "engine.h"
 #include "queue.h"
+#include "parse.h"
 
 static char optstr[] = "b:e:g:l:p:q:s:t:dhv";
 
@@ -134,6 +136,7 @@ static void on_signal(int signo)
 int main(int argc, char **argv)
 {
     gid_t gid;
+    addr_t addr;
     struct sigaction sa;
     int c, dFlag, vFlag;
     unsigned long max_message_size;
@@ -270,7 +273,11 @@ int main(int argc, char **argv)
         if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
             errc("queue_receive failed"); // TODO: better
         } else {
-            engine->handle(ctxt, tablename, buffer);
+            if (!parse_addr(buffer, &addr)) {
+                errx("parsing of '%s' failed", buffer); // TODO: better
+            } else {
+                engine->handle(ctxt, tablename, addr);
+            }
         }
     }
     /* not reached */

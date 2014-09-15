@@ -9,6 +9,7 @@
 #include <libmnl/libmnl.h>
 #include <libnftnl/set.h>
 
+#include "err.h"
 #include "engine.h"
 
 /*
@@ -64,18 +65,16 @@ static void *nftables_open(void)
     return data;
 }
 
-static int nftables_handle(void *ctxt, const char *tablename, const char *buffer)
+static int nftables_handle(void *ctxt, const char *tablename, addr_t addr)
 {
     int ret;
     nftables_data_t *data;
-    struct in_addr addr4;
-    struct in6_addr addr6;
     struct nlmsghdr *nlh;
     uint32_t seq, family;
 
     data = (nftables_data_t *) ctxt;
     seq = time(NULL);
-    if (1 == inet_pton(AF_INET, buffer, &addr4)) {
+    {
 #if 1
         uint32_t xxx;
         struct nft_set_elem *e;
@@ -83,20 +82,14 @@ static int nftables_handle(void *ctxt, const char *tablename, const char *buffer
         xxx = 0x3;
         e = nft_set_elem_alloc();
 #endif
-        family = NFPROTO_IPV4;
-        nft_set_attr_set(data->s, NFT_SET_ATTR_NAME, tablename);
+        family = addr.fa == AF_INET ? NFPROTO_IPV4 : NFPROTO_IPV6;
+        nft_set_attr_set(data->s, NFT_SET_ATTR_NAME, tablename); // TODO: le nom doit/peut être différent ip/ip6?
 #if 0
-        nft_set_elem_attr_set(data->e, NFT_SET_ELEM_ATTR_KEY, &addr4, sizeof(addr4));
+        nft_set_elem_attr_set(data->e, NFT_SET_ELEM_ATTR_KEY, &addr.sa, addr.sa_size);
 #else
         nft_set_elem_attr_set(e, NFT_SET_ELEM_ATTR_KEY, &xxx, sizeof(xxx));
         nft_set_elem_add(data->s, e);
 #endif
-    } else if (1 == inet_pton(AF_INET6, buffer, &addr6)) {
-        family = NFPROTO_IPV6;
-        nft_set_attr_set(data->s, NFT_SET_ATTR_NAME, tablename); // TODO: le nom doit être différent ip/ip6?
-        nft_set_elem_attr_set(data->e, NFT_SET_ELEM_ATTR_KEY, &addr6, sizeof(addr6));
-    } else {
-        warn("Valid address expected, got: %s", buffer);
     }
     nlh = nft_set_nlmsg_build_hdr(data->buf, NFT_MSG_NEWSETELEM, family, NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, seq);
     nft_set_elems_nlmsg_build_payload(nlh, data->s);

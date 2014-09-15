@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "err.h"
 #include "engine.h"
 
 void _verr(int fatal, int errcode, const char *fmt, ...)
@@ -30,6 +31,7 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
 int main(int argc, char **argv)
 {
     void *ctxt;
+    addr_t addr;
     const engine_t *engine;
 
     if (argc > 1) {
@@ -42,7 +44,8 @@ int main(int argc, char **argv)
     }
 
     ctxt = engine->open();
-    engine->handle(ctxt, "blacklist", "1.2.3.4");
+    parse_addr("1.2.3.4", &addr);
+    engine->handle(ctxt, "blacklist", addr);
     engine->close(ctxt);
     free(ctxt);
 
