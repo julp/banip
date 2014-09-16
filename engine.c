@@ -14,13 +14,13 @@ extern engine_t npf_engine;
 extern engine_t nftables_engine;
 #endif /* NFTABLES */
 
-#ifdef WITH_NFTABLES
+#ifdef WITH_IPSET
 extern engine_t ipset_engine;
-#endif /* NFTABLES */
+#endif /* IPSET */
 
 #ifdef WITH_IPTABLES
 extern engine_t iptables_engine;
-#endif /* WITH_IPTABLES */
+#endif /* IPTABLES */
 
 extern engine_t dummy_engine;
 
@@ -34,12 +34,12 @@ static const engine_t *available_engines[] = {
 #ifdef WITH_NFTABLES
     &nftables_engine,
 #endif /* NFTABLES */
-#ifdef WITH_NFTABLES
+#ifdef WITH_IPSET
     &ipset_engine,
-#endif /* NFTABLES */
+#endif /* IPSET */
 #ifdef WITH_IPTABLES
     &iptables_engine,
-#endif /* WITH_IPTABLES */
+#endif /* IPTABLES */
     &dummy_engine,
     NULL
 };
