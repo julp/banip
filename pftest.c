@@ -36,15 +36,16 @@ int main(int argc, char **argv)
     addr_t addr;
     const engine_t *engine;
 
+    ctxt = NULL;
     if (argc > 1) {
-        engine = get_engine_by_name(argv[1]);
+        if (NULL == (engine = get_engine_by_name(argv[1]))) {
+            errx("unknown engine '%s'", argv[1]);
+        }
     } else {
-        engine = get_default_engine();
+        if (NULL == (engine = get_default_engine())) {
+            errx("no engine available for your system");
+        }
     }
-    if (NULL == engine) {
-        errx("no engine found");
-    }
-
     if (NULL != engine->open) {
         ctxt = engine->open(TABLENAME);
     }
@@ -53,7 +54,9 @@ int main(int argc, char **argv)
     if (NULL != engine->close) {
         engine->close(ctxt);
     }
-    free(ctxt);
+    if (NULL != ctxt) {
+        free(ctxt);
+    }
 
     return EXIT_SUCCESS;
 }

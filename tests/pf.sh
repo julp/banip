@@ -6,7 +6,7 @@ declare -r TESTDIR=$(dirname $(readlink -f "${BASH_SOURCE}"))
 
 skipUnlessBinaryExists pfctl
 
-${TESTDIR}/../pftest -e pf
+${TESTDIR}/../pftest pf
 
 assertExitValue "PF" "pfctl -t ${PFBAN_TEST_TABLE} -T test 1.2.3.4 &> /dev/null" 0
 
