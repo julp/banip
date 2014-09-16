@@ -17,16 +17,16 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 * `-g/--group <group>`: name of the group to run as
 * `-b/--msgsize <size>`: maximum messages size (in bytes) (default: 1024)
 * `-s/--qsize <size>`: maximum messages in queue (default: 10)
-* `-t/--table <table name>`: name of the table/set
+* `-t/--table <table name>`: name of the table/set/chain
 
 ## Supported firewalls
 
-| Name | Status | CIDR support | State killing support |
-| ---- | ------ | ------------ | --------------------- |
-| PF | in use | yes | yes |
-| NPF | for testing | no (only in NetBSD-current?) | not available |
-| iptables/ipset | not tested | no (todo) | not available |
-| nftables | broken | ? | not available |
+| Name | Status | CIDR support | Extra |
+| ---- | ------ | ------------ | ----- |
+| PF | in use | yes | states killing |
+| NPF | for testing | no (only in NetBSD-current?) | - |
+| iptables | not tested | no (todo) | - |
+| nftables | broken | ? | - |
 
 ### PF: (OpenBSD) Packet filter
 
@@ -42,7 +42,18 @@ WARNING: for now, NPF gives a numeric identifier to tables but they could change
 
 Table names are only supported in NetBSD-current.
 
-### iptables with ipset (Linux)
+### iptables (Linux)
+
+#### alone
+
+Add a new chain, named *banip* below:
+```
+iptables -N banip
+iptables -A banip -j RETURN
+iptables -I INPUT -j banip # add any other option if you only want to block a specific trafic (eg: -p tcp --dport http)
+```
+
+#### with ipset
 
 1. Install ipset
 

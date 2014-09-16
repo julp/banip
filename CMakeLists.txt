@@ -28,7 +28,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
 else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
-    # Linux > nftables
+    # Linux
+    # nftables
     include(CheckIncludeFile)
     check_include_file("linux/netfilter/nf_tables.h" HAVE_NFTABLES)
     if(HAVE_NFTABLES)
@@ -37,15 +38,15 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
         list(APPEND LIBRARIES "nftnl")
         list(APPEND SOURCES nftables.c)
     endif(HAVE_NFTABLES)
-    # Linux > iptables/ipset
+    # iptables/ipset
     find_program(IPSET_EXECUTABLE "ipset")
     if(IPSET_EXECUTABLE)
         add_definitions(-DWITH_IPSET)
         list(APPEND SOURCES ipset.c)
     endif(IPSET_EXECUTABLE)
-    if(NOT HAVE_NFTABLES AND NOT IPSET_EXECUTABLE)
-        message(FATAL_ERROR "No suitable firewall found")
-    endif(NOT HAVE_NFTABLES AND NOT IPSET_EXECUTABLE)
+    # iptables (alone)
+    add_definitions(-DWITH_IPTABLES)
+    list(APPEND SOURCES iptables.c)
     # XXX
     #add_executable(nft-set-elem-add nft-set-elem-add.c)
     #target_link_libraries(nft-set-elem-add ${LIBRARIES})

@@ -18,6 +18,10 @@ extern engine_t nftables_engine;
 extern engine_t ipset_engine;
 #endif /* NFTABLES */
 
+#ifdef WITH_IPTABLES
+extern engine_t iptables_engine;
+#endif /* WITH_IPTABLES */
+
 extern engine_t dummy_engine;
 
 static const engine_t *available_engines[] = {
@@ -33,6 +37,9 @@ static const engine_t *available_engines[] = {
 #ifdef WITH_NFTABLES
     &ipset_engine,
 #endif /* NFTABLES */
+#ifdef WITH_IPTABLES
+    &iptables_engine,
+#endif /* WITH_IPTABLES */
     &dummy_engine,
     NULL
 };
