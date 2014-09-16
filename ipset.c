@@ -24,15 +24,15 @@ static int _run_command(const char *format, ...)
 
 static void *ipset_open(const char *tablename)
 {
-    _run_command("ipset create %s4 hash:net family inet", tablename);
-    _run_command("ipset create %s6 hash:net family inet6", tablename);
+    _run_command("ipset -! create %s4 hash:net family inet", tablename);
+    _run_command("ipset -! create %s6 hash:net family inet6", tablename);
 
     return NULL;
 }
 
 static int ipset_handle(void *UNUSED(ctxt), const char *tablename, addr_t addr)
 {
-    return _run_command("ipset -A %s%c %s", tablename, addr.fa == AF_INET ? '4' : '6', addr.humanrepr);
+    return _run_command("ipset -! -A %s%c %s", tablename, addr.fa == AF_INET ? '4' : '6', addr.humanrepr);
 }
 
 const engine_t ipset_engine = {
