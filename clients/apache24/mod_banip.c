@@ -9,6 +9,7 @@
 #include "http_log.h"
 #include "http_protocol.h"
 #include "http_request.h"
+#include "util_script.h"
 
 #include "common.h"
 #include "queue.h"
@@ -20,15 +21,21 @@
 module AP_MODULE_DECLARE_DATA banip_module;
 
 // http://httpd.apache.org/docs/trunk/developer/modguide.html
-#if 0
-apr_table_t *GET;
-ap_args_to_table(r, &GET);
-#endif
+
+typedef struct _pattern_compiler pattern_compiler;
 
 typedef struct {
+    char *what;
     char *pattern;
     ap_regex_t *regexp;
+    pattern_compiler *compiler;
 } banip_rule;
+
+struct _pattern_compiler {
+    char indicator;
+    char *(*compile)(banip_rule *, apr_pool_t *, char *); // returns: NULL for success/error message for failure
+    int (*compare)(const banip_rule const *, const char const *); // returns: 0 if equals, < 0 if inferior, > 0 if superior
+};
 
 typedef struct {
     char *queue;
@@ -37,10 +44,120 @@ typedef struct {
 } banip_server_conf;
 
 typedef struct {
+    apr_table_t *get;
     apr_array_header_t *rules;
 } banip_perdir_conf;
 
-static void *queue;
+static void *queue = NULL;
+
+/* ======================== ? ========================  */
+
+static char *regex_compile(banip_rule *rule, apr_pool_t *pool, char *pattern)
+{
+    char *ret;
+
+    ret = NULL;
+    rule->pattern = pattern;
+    if (NULL == (rule->regexp = ap_pregcomp(pool, pattern, AP_REG_EXTENDED))) {
+        ret = apr_pstrcat(pool, BANIP_PREFIX "Rule: cannot compile regular expression '", pattern, "'", NULL);
+    }
+
+    return ret;
+}
+
+static int regex_compare(const banip_rule const *rule, const char const *string)
+{
+    return ap_regexec(rule->regexp, string, 0, NULL, 0);
+}
+
+static char *string_compile(banip_rule *rule, apr_pool_t *pool, char *pattern)
+{
+    rule->pattern = ++pattern; /* skip initial '=' */
+
+    return NULL;
+}
+
+static int string_compare(const banip_rule const *rule, const char const *string)
+{
+    return strcmp(rule->pattern, string);
+}
+
+static const pattern_compiler pattern_compilers[] = {
+    { '\0', regex_compile, regex_compare }, /* 0 is default */
+    { '=', string_compile, string_compare },
+    // !, !=, <, >, >=, <=
+};
+
+// static unsigned char pattern_compilers_map[256];
+
+// hide details and do initialization of banip_rule
+static char *compile_rule(banip_rule *rule, apr_pool_t *pool, char *pattern)
+{
+    rule->regexp = NULL;
+    if ('=' == pattern[0]) {
+        rule->compiler = &pattern_compilers[1];
+    } else {
+        rule->compiler = &pattern_compilers[0];
+    }
+//     rule->compiler = &pattern_compilers[pattern_compilers_map[(unsigned char) pattern[0]]];
+
+    return rule->compiler->compile(rule, pool, pattern);
+}
+
+/* ======================== ? ========================  */
+
+const char *lookup_default(const char *name, request_rec *r)
+{
+    return r->uri;
+}
+
+const char *lookup_env(const char *name, request_rec *r)
+{
+    const char *ret;
+
+    ret = NULL;
+    if (NULL == (ret = apr_table_get(r->subprocess_env, name))) {
+        if (NULL == (ret = apr_table_get(r->notes, name))) {
+            ret = getenv(name);
+        }
+    }
+
+    return ret;
+}
+
+const char *lookup_http(const char *name, request_rec *r)
+{
+    return apr_table_get(r->headers_in, name);
+}
+
+const char *lookup_get(const char *name, request_rec *r)
+{
+    banip_perdir_conf *dconf;
+
+    dconf = (banip_perdir_conf *) ap_get_module_config(r->per_dir_config, &banip_module);
+    if (NULL == dconf->get) {
+        ap_args_to_table(r, &dconf->get);
+    }
+
+    return apr_table_get(dconf->get, name);
+}
+
+const char *lookup_post(const char *name, request_rec *r)
+{
+    return NULL;
+}
+
+struct {
+    const char *prefix;
+    size_t prefix_len;
+    const char *(*lookup)(const char *, request_rec *);
+} static const variables[] = {
+    { NULL, 0, lookup_default },
+    { "ENV:", 4, lookup_env },
+    { "GET:", 4, lookup_get },
+    { "HTTP:", 5, lookup_http },
+    { "POST:", 5, lookup_post },
+};
 
 /* ======================== configuration creation/merging ========================  */
 
@@ -72,6 +189,7 @@ static void *config_perdir_create(apr_pool_t *p, char *path)
     banip_perdir_conf *ret;
 
     ret = (banip_perdir_conf *) apr_pcalloc(p, sizeof(*ret));
+    ret->get = NULL;
     ret->rules = apr_array_make(p, 2, sizeof(banip_rule));
 
     return (void *) ret;
@@ -115,6 +233,7 @@ static int banip_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
 {
     banip_server_conf *sconf;
 
+    // TODO: we haven't yet drop root privileges here?
     if (AP_SQ_MS_CREATE_PRE_CONFIG == ap_state_query(AP_SQ_MAIN_STATE)) {
         return OK;
     }
@@ -142,7 +261,7 @@ static int banip_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
 static int banip_fixup(request_rec *r)
 {
     int i;
-    banip_rule *rules;
+    banip_rule *rules, *rule;
     banip_perdir_conf *dconf;
     banip_server_conf *sconf;
 
@@ -155,17 +274,24 @@ static int banip_fixup(request_rec *r)
 
     rules = (banip_rule *) sconf->rules->elts;
     for (i = 0; i < sconf->rules->nelts; i++) {
+        size_t j;
         int match;
+        const char *string;
 
-        match = 0;
-        if (NULL == rules[i].regexp) {
-            match = NULL != strstr(rules[i].pattern, r->uri);
-        } else {
-            match = 0 == ap_regexec(rules[i].regexp, r->uri, 0, NULL, 0);
+        rule = &rules[i];
+        string = NULL;
+        for (j = 0; j < ARRAY_SIZE(variables); j++) {
+            if (variables[j].prefix == rule->what || (NULL != variables[j].prefix && 0 == strncmp(variables[j].prefix, rule->what, variables[j].prefix_len))) {
+                string = variables[j].lookup(rule->what + variables[j].prefix_len, r);
+                break;
+            }
         }
-
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG + 1, 0, r, "%s %s %s", r->uri, match ? "matches" : "doesn't match", rules[i].pattern);
-        if (match) {
+        if (NULL == string) {
+            continue;
+        }
+        match = rule->compiler->compare(&rules[i], string);
+        ap_log_rerror(APLOG_MARK, APLOG_ERR/*APLOG_DEBUG + 1*/, 0, r, "%s %s %s", string, 0 == match ? "matches" : "doesn't match", rule->pattern);
+        if (0 == match) {
             banip_queue_send_message(r);
 #if 0
             return DONE;
@@ -206,29 +332,38 @@ static const char *cmd_banip_queue(cmd_parms *cmd, void *cfg, const char *arg)
     return NULL;
 }
 
-static const char *cmd_banip_rule(cmd_parms *cmd, void *cfg, const char *arg)
+static const char *cmd_banip_rule(cmd_parms *cmd, void *cfg, int argc, char *const argv[])
 {
+    const char *ret;
     banip_rule *rule;
+    char *what, *pattern;
     banip_perdir_conf *dconf;
     banip_server_conf *sconf;
 
     dconf = cfg;
+    ret = what = NULL;
     sconf = (banip_server_conf *) ap_get_module_config(cmd->server->module_config, &banip_module);
+    if (1 == argc) {
+        pattern = argv[0];
+    } else if (2 == argc) {
+        what = argv[0];
+        pattern = argv[1];
+    } else {
+        return apr_pstrcat(cmd->pool, BANIP_PREFIX "Rule: too many arguments", NULL);
+    }
     if (NULL == cmd->path) {
         rule = apr_array_push(sconf->rules);
     } else {
         rule = apr_array_push(dconf->rules);
     }
-    rule->pattern = arg;
-    if (1) {
-        if (NULL == (rule->regexp = ap_pregcomp(cmd->pool, arg, AP_REG_EXTENDED))) {
-            return apr_pstrcat(cmd->pool, BANIP_PREFIX "Rule: cannot compile regular expression '", arg, "'", NULL);
+    if (NULL != (ret = compile_rule(rule, cmd->pool, pattern))) {
+        if (NULL != what) {
+//             ret = compile_what();
         }
-    } else {
-        rule->regexp = NULL;
     }
+    rule->what = what; /* TODO */
 
-    return NULL;
+    return ret;
 }
 
 #ifndef WITHOUT_OUTPUT_FILTER
@@ -268,7 +403,7 @@ static void banip_insert_output_filter(request_rec *r)
 static const command_rec command_table[] = {
     AP_INIT_FLAG(BANIP_PREFIX "Enable", cmd_banip_enable, NULL, OR_FILEINFO, "TODO"),
     AP_INIT_TAKE1(BANIP_PREFIX "Queue", cmd_banip_queue, NULL, RSRC_CONF, "TODO"),
-    AP_INIT_TAKE1(BANIP_PREFIX "Rule", cmd_banip_rule, NULL, OR_FILEINFO, "TODO"),
+    AP_INIT_TAKE_ARGV(BANIP_PREFIX "Rule", cmd_banip_rule, NULL, OR_FILEINFO, "TODO"),
 #if 0
     AP_INIT_ITERATE(BANIP_PREFIX "Policy", cmd_banip_policy, NULL, RSRC_CONF, "TODO"),
     AP_INIT_TAKE1(BANIP_PREFIX "Behavior", cmd_banip_behavior, NULL, OR_FILEINFO, "TODO"),
@@ -278,6 +413,15 @@ static const command_rec command_table[] = {
 
 static void register_hooks(apr_pool_t *p)
 {
+/*
+    size_t i;
+
+    bzero(&pattern_compilers_map, ARRAY_SIZE(pattern_compilers_map));
+    for (i = 1; i < ARRAY_SIZE(pattern_compilers); i++) {
+        pattern_compilers_map[(unsigned char) pattern_compilers[i].indicator] = i;
+    }
+*/
+
     ap_hook_fixups(banip_fixup, NULL, NULL, APR_HOOK_FIRST);
     ap_hook_post_config(banip_post_config, NULL, NULL, APR_HOOK_FIRST);
 #ifndef WITHOUT_OUTPUT_FILTER
