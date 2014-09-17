@@ -46,7 +46,7 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
     endif(IPSET_EXECUTABLE)
     # iptables (alone)
     add_definitions(-DWITH_IPTABLES)
-    list(APPEND SOURCES iptables.c)
+    list(APPEND SOURCES iptables.c command.c)
     # XXX
     #add_executable(nft-set-elem-add nft-set-elem-add.c)
     #target_link_libraries(nft-set-elem-add ${LIBRARIES})
