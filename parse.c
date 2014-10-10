@@ -41,6 +41,73 @@ int parse_ulong(const char *str, unsigned long *val)
     return 1;
 }
 
+#if 0
+struct {
+    struct in_addr;
+    uint8_t netmask;
+} static const reserved[] = {
+    // TODO: add 127/8 ?
+    // { .s_addr = htonl(0x0a000000) }
+    // voir /usr/include/netinet/in.h
+    { (in_addr_t) (0x0a000000), 8 },  /* 10/8 */
+    { (in_addr_t) (0xac100000), 12 }, /* 172.16/12 */
+    { (in_addr_t) (0xc0a80000), 16 }, /* 192.168/16 */
+};
+
+int ip4_matchnet(const struct in6_addr *ip, const struct in_addr *net, const unsigned char mask)
+{
+    struct in_addr m;
+
+    /* do this explicitely here so we don't rely on how the compiler handles
+     * the shift overflow below. */
+    if (mask == 0)
+        return 1;
+
+    /* constuct a bit mask out of the net length.
+     * remoteip and ip are network byte order, it's easier
+     * to convert mask to network byte order than both
+     * to host order. It's ugly, isn't it? */
+    m.s_addr = htonl(-1 - ((1U << (32 - mask)) - 1));
+
+    return ((ip->s6_addr32[3] & m.s_addr) == (net->s_addr & m.s_addr));
+}
+
+int ip6_matchnet(const struct in6_addr *ip, const struct in6_addr *net, const unsigned char mask)
+{
+    struct in6_addr maskv6;
+    int i;
+
+    memset(maskv6.s6_addr, 0, sizeof(maskv6.s6_addr));
+    for (i = 0; i < mask / 32; ++i) {
+        maskv6.s6_addr32[i] = -1;
+    }
+    if ((mask % 32) != 0)
+        maskv6.s6_addr32[mask / 32] = htonl(-1 - ((1U << (32 - (mask % 32))) - 1));
+
+    for (i = 3; i >= 0; i--) {
+        if ((ip->s6_addr32[i] & maskv6.s6_addr32[i]) != (net->s6_addr32[i] & maskv6.s6_addr32[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+const struct in_addr priva = { .s_addr = htonl(0x0a000000) };
+const struct in_addr privb = { .s_addr = htonl(0xac100000) };
+const struct in_addr privc = { .s_addr = htonl(0xc0a80000) };
+
+/* 10.0.0.0/8 */
+flagtmp = ip4_matchnet(&(thisip->addr), &priva, 8);
+/* 172.16.0.0/12 */
+if (!flagtmp)
+    flagtmp = ip4_matchnet(&(thisip->addr), &privb, 12);
+/* 192.168.0.0/16 */
+if (!flagtmp)
+    flagtmp = ip4_matchnet(&(thisip->addr), &privc, 16);
+#endif
+
+
+
 int parse_addr(const char *string, addr_t *addr)
 {
     char *p, *buffer;
@@ -68,13 +135,17 @@ int parse_addr(const char *string, addr_t *addr)
         }
         switch (res->ai_family) {
             case AF_INET:
-                assert(1 == inet_pton(AF_INET, buffer, &addr->sa.v4));
+                ret = inet_pton(AF_INET, buffer, &addr->sa.v4);
+                assert(1 == ret);
                 addr->sa_size = sizeof(addr->sa.v4);
                 break;
             case AF_INET6:
-                assert(1 == inet_pton(AF_INET6, buffer, &addr->sa.v6));
+                ret = inet_pton(AF_INET6, buffer, &addr->sa.v6);
+                assert(1 == ret);
                 addr->sa_size = sizeof(addr->sa.v6);
                 break;
+            default:
+                assert(0);
         }
         addr->netmask = prefix;
         addr->fa = res->ai_family;
