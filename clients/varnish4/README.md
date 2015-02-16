@@ -42,7 +42,7 @@ vcl 4.0;
 import msgsend; # from "/a/non/standard/place/"
 
 sub vcl_init {
-    new banip = msgsend.mqueue("/banip");
+    new banip = msgsend.mqueue("/banipd");
 }
 
 sub vcl_recv {
