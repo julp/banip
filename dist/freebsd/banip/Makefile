@@ -12,7 +12,7 @@ LICENSE=        BSD
 
 USE_GITHUB=     yes
 GH_ACCOUNT=     julp
-GH_COMMIT=      919a98a
+GH_COMMIT=      e5b9adf
 GH_TAGNAME=     ${GH_COMMIT}
 
 USE_RC_SUBR=    banipd
