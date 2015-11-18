@@ -9,6 +9,8 @@ set(SOURCES "engine.c;parse.c;")
 set(LIBRARIES "queue;")
 
 include_directories(queues)
+# To be able to include config.h when outsourcing
+include_directories(${CMAKE_BINARY_DIR}/queues)
 add_subdirectory(queues)
 
 if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
