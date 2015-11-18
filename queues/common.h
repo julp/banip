@@ -25,6 +25,11 @@
 # define UNSET_FLAG(value, flag) \
     ((value) &= ~(flag))
 
+typedef enum {
+    FALSE,
+    TRUE
+} bool;
+
 enum {
     BANIPD_EXIT_SUCCESS = 0,
     BANIPD_EXIT_FAILURE,

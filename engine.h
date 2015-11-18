@@ -2,9 +2,11 @@
 
 # define ENGINE_H
 
+# include "common.h"
 # include "parse.h"
 
 typedef struct {
+    bool drop_privileges;
     const char * const name;
     void *(*open)(const char *);
 //     int (*getopt)(void *, int, const char *);

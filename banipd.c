@@ -3,6 +3,7 @@
 #include <sys/types.h>
 
 #include <unistd.h>
+#include <pwd.h>
 #include <grp.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -103,7 +104,7 @@ static void cleanup(void)
     queue_close(&queue);
     if (NULL != pidfilename) {
         if (0 != unlink(pidfilename)) {
-            warnc("mq_unlink failed");
+            warnc("unlink failed");
         }
     }
     if (NULL != err_file && fileno(err_file) > 2) {
@@ -259,7 +260,6 @@ int main(int argc, char **argv)
         }
     }
     if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
-        queue_close(&queue);
         errx("queue_open failed"); // TODO: better
     }
     if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {
@@ -270,6 +270,18 @@ int main(int argc, char **argv)
     }
     if (NULL != engine->open) {
         ctxt = engine->open(tablename);
+    }
+    if (engine->drop_privileges) {
+        struct passwd *pwd;
+
+        if (NULL == (pwd = getpwnam("nobody"))) {
+            if (NULL == (pwd = getpwnam("daemon"))) {
+                errx("no nobody or daemon user accounts found on this system");
+            }
+        }
+        if (0 != setuid(pwd->pw_uid)) {
+            errc("setuid failed");
+        }
     }
     while (1) {
         ssize_t read;

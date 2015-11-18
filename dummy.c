@@ -12,6 +12,7 @@ static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), addr_
 }
 
 const engine_t dummy_engine = {
+    TRUE,
     "dummy",
     NULL,
     dummy_handle,

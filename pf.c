@@ -208,6 +208,7 @@ static void pf_close(void *ctxt)
 }
 
 const engine_t pf_engine = {
+    TRUE,
     "pf",
     pf_open,
     pf_handle,

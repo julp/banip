@@ -21,6 +21,7 @@ static int ipset_handle(void *UNUSED(ctxt), const char *tablename, addr_t addr)
 }
 
 const engine_t ipset_engine = {
+    FALSE,
     "ipset",
     ipset_open,
     ipset_handle,
