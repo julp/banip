@@ -23,7 +23,7 @@ GH_TAGNAME=	e7e6b50
 GH_PROJECT=	${DISTNAME}
 
 USES=		cmake:outsource
-WRKSRC=		${WRKDIR}/${GH_PROJECT}-${GH_COMMIT}/clients/varnish4
+WRKSRC=		${WRKDIR}/${GH_PROJECT}-${GH_TAGNAME}/clients/varnish4
 
 XFLAGS=		-I${LOCALBASE}/include -I${LOCALBASE}/include/varnish
 CFLAGS+=	${XFLAGS}
