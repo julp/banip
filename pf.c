@@ -15,6 +15,7 @@
 
 #include "err.h"
 #include "engine.h"
+#include "capsicum.h"
 
 typedef struct {
     int fd;
@@ -28,6 +29,8 @@ static void *pf_open(const char *tablename)
     if (-1 == (data->fd = open("/dev/pf", O_RDWR))) {
         errc("failed opening /dev/pf");
     }
+    CAP_RIGHTS_LIMIT(data->fd, CAP_READ, CAP_WRITE, CAP_IOCTL);
+    CAP_IOCTLS_LIMIT(data->fd, DIOCRADDADDRS, DIOCKILLSTATES);
 #if 0
     {
         struct pfioc_table io;

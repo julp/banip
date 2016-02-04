@@ -12,6 +12,7 @@
 #include "config.h"
 #include "common.h"
 #include "queue.h"
+#include "capsicum.h"
 
 /*
 struct msgbuf {
@@ -135,6 +136,14 @@ queue_err_t queue_open(void *p, const char *name, int flags)
     if (-1 == q->qid) {
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
+    }
+    if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
+        CAP_RIGHTS_LIMIT(q->qid, CAP_READ);
+#if 0
+    } else {
+    if (HAS_FLAG(flags, QUEUE_FL_SENDER)) {
+        CAP_RIGHTS_LIMIT(q->qid, CAP_WRITE);
+#endif
     }
     if (0 != msgctl(q->qid, IPC_STAT, &buf)) {
         // TODO: error

@@ -13,6 +13,7 @@
 #include "config.h"
 #include "common.h"
 #include "queue.h"
+#include "capsicum.h"
 
 #define NOT_MQD_T ((mqd_t) -1)
 
@@ -92,6 +93,13 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
         }
         // TODO: error
         return QUEUE_ERR_GENERAL_FAILURE;
+    }
+    if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
+        CAP_RIGHTS_LIMIT(q->mq, CAP_READ);
+#if 0
+    } else {
+        CAP_RIGHTS_LIMIT(q->mq, CAP_WRITE);
+#endif
     }
     if (HAS_FLAG(flags, QUEUE_FL_OWNER)) {
         umask(oldmask);

@@ -18,6 +18,7 @@
 #include "engine.h"
 #include "queue.h"
 #include "parse.h"
+#include "capsicum.h"
 
 static char optstr[] = "b:e:g:l:p:q:s:t:dhv";
 
@@ -259,6 +260,11 @@ int main(int argc, char **argv)
             errc("setgroups failed");
         }
     }
+    CAP_RIGHTS_LIMIT(STDOUT_FILENO, CAP_WRITE);
+    CAP_RIGHTS_LIMIT(STDERR_FILENO, CAP_WRITE);
+    if (NULL != err_file/* && fileno(err_file) > 2*/) {
+        CAP_RIGHTS_LIMIT(fileno(err_file), CAP_WRITE);
+    }
     if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
         errx("queue_open failed"); // TODO: better
     }
@@ -283,6 +289,7 @@ int main(int argc, char **argv)
             errc("setuid failed");
         }
     }
+    CAP_ENTER();
     while (1) {
         ssize_t read;
 
