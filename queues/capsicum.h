@@ -1,3 +1,5 @@
+#pragma once
+
 #if defined(__FreeBSD__) && __FreeBSD__ >= 9
 
 # include <unistd.h>
@@ -40,11 +42,3 @@
     /* NOP */
 
 #endif /* FreeBSD >= 9.0 */
-
-/*
-logfile: write
-pidfile: write
-stderr: write
-"socket": read
-pf: ioctl + write ?
-*/
