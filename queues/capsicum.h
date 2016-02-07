@@ -2,6 +2,7 @@
 
 #if defined(__FreeBSD__) && __FreeBSD__ >= 9
 
+# include <stdio.h> /* perror */
 # include <unistd.h>
 # include <sys/capsicum.h>
 
@@ -9,6 +10,7 @@
     do { \
         unsigned long cmds[] = { __VA_ARGS__ }; \
         if (0 != cap_ioctls_limit(fd, cmds, ARRAY_SIZE(cmds))) { \
+            fprintf(stderr, "%s:%s:%d: fd is %d", __FILE__, __func__, __LINE__, (int) fd); \
             perror("cap_ioctls_limit"); \
         } \
     } while (0);
@@ -19,6 +21,7 @@
  \
         cap_rights_init(&rights, ## __VA_ARGS__); \
         if (0 != cap_rights_limit(fd, &rights) && ENOSYS != errno) { \
+            fprintf(stderr, "%s:%s:%d: fd is %d", __FILE__, __func__, __LINE__, (int) fd); \
             perror("cap_rights_limit"); \
         } \
     } while (0);
