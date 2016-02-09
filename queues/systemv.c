@@ -14,6 +14,14 @@
 #include "queue.h"
 #include "capsicum.h"
 
+#ifdef DEBUG
+# include <stdio.h>
+# define debug(format, ...) \
+    fprintf(stderr, "[%d:%s] " format "\n", __LINE__, __func__, ## __VA_ARGS__)
+#else
+# define debug(format, ...)
+#endif /* DEBUG */
+
 /*
 struct msgbuf {
     long mtype;
@@ -95,10 +103,12 @@ queue_err_t queue_open(void *p, const char *name, int flags)
         }
         if (NULL == (fp = fopen(filename, "wx"))) {
             // TODO: error
+            debug("");
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         if (1 != fwrite(&id, sizeof(id), 1, fp)) {
             // TODO: error
+            debug("");
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         fflush(fp);
@@ -109,10 +119,12 @@ queue_err_t queue_open(void *p, const char *name, int flags)
         }
         if (NULL == (fp = fopen(filename, "r"))) {
             // TODO: error
+            debug("");
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         if (1 != fread(&id, sizeof(id), 1, fp) < sizeof(id)) {
             // TODO: error
+            debug("");
             return QUEUE_ERR_GENERAL_FAILURE;
         }
     }
@@ -120,11 +132,13 @@ queue_err_t queue_open(void *p, const char *name, int flags)
     if (-1 == (key = ftok(filename, id))) {
         // NOTE: errno is not set by ftok
         // TODO: error
+        debug("");
         return QUEUE_ERR_GENERAL_FAILURE;
     }
     if (HAS_FLAG(flags, QUEUE_FL_OWNER)) {
         if (NULL == (q->filename = strdup(filename))) {
             // TODO: error
+            debug("");
             return QUEUE_ERR_GENERAL_FAILURE;
         }
         oldmask = umask(0);
@@ -135,23 +149,32 @@ queue_err_t queue_open(void *p, const char *name, int flags)
     }
     if (-1 == q->qid) {
         // TODO: error
+        debug("");
         return QUEUE_ERR_GENERAL_FAILURE;
     }
     if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
+#if 0
+https://svnweb.freebsd.org/base/head/sys/kern/sysv_msg.c?revision=282213&view=markup
+
+#define IPCID_TO_IX(id)         ((id) & 0xffff)
+#define IPCID_TO_SEQ(id)        (((id) >> 16) & 0xffff)
+#define IXSEQ_TO_IPCID(ix,perm) (((perm.seq) << 16) | (ix & 0xffff))
+#endif
         CAP_RIGHTS_LIMIT(q->qid, CAP_READ);
 #if 0
     } else {
-    if (HAS_FLAG(flags, QUEUE_FL_SENDER)) {
         CAP_RIGHTS_LIMIT(q->qid, CAP_WRITE);
 #endif
     }
     if (0 != msgctl(q->qid, IPC_STAT, &buf)) {
         // TODO: error
+        debug("");
         return QUEUE_ERR_GENERAL_FAILURE;
     }
     q->buffer_size = buf.msg_qbytes / 8;
     if (NULL == (q->buffer = malloc(sizeof(long) + sizeof(q->buffer) * q->buffer_size))) {
         // TODO: error
+        debug("");
         return QUEUE_ERR_GENERAL_FAILURE;
     }
     *(long *) q->buffer = 1; /* mtype is an integer greater than 0 */
@@ -210,6 +233,7 @@ queue_err_t queue_send(void *p, const char *msg, int msg_len)
         return QUEUE_ERR_OK;
     } else {
         // TODO: error
+        debug("");
         return QUEUE_ERR_GENERAL_FAILURE;
     }
 }
@@ -221,13 +245,17 @@ queue_err_t queue_close(void **p)
 
         q = (systemv_queue_t *) *p;
         if (NULL != q->filename) { // we are the owner
-            if (0 != msgctl(q->qid, IPC_RMID, NULL)) {
-                // TODO: error
-                return QUEUE_ERR_GENERAL_FAILURE;
+            if (-1 != q->qid) {
+                if (0 != msgctl(q->qid, IPC_RMID, NULL)) {
+                    // TODO: error
+                    debug("");
+                    return QUEUE_ERR_GENERAL_FAILURE;
+                }
+                q->qid = -1;
             }
-            q->qid = -1;
             if (0 != unlink(q->filename)) {
                 // TODO: error
+                debug("");
                 return QUEUE_ERR_GENERAL_FAILURE;
             }
             free(q->filename);
