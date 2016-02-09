@@ -95,10 +95,11 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
         return QUEUE_ERR_GENERAL_FAILURE;
     }
     if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
-        CAP_RIGHTS_LIMIT((int) q->mq, CAP_READ);
+        // mq_setattr implies CAP_EVENT?
+        CAP_RIGHTS_LIMIT(__mq_oshandle(q->mq), CAP_READ, CAP_EVENT);
 #if 0
     } else {
-        CAP_RIGHTS_LIMIT((int) q->mq, CAP_WRITE);
+        CAP_RIGHTS_LIMIT(__mq_oshandle(q->mq), CAP_WRITE, CAP_EVENT);
 #endif
     }
     if (HAS_FLAG(flags, QUEUE_FL_OWNER)) {

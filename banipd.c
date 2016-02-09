@@ -252,7 +252,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if ((gid_t) -1 != gid) {
+    if (((gid_t) -1) != gid) {
         if (0 != setgid(gid)) {
             errc("setgid failed");
         }
