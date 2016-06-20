@@ -1,6 +1,8 @@
 #pragma once
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 9
+#include <sys/param.h> /* __FreeBSD__ */
+
+#if 0 && defined(__FreeBSD__) && __FreeBSD__ >= 9
 
 # include <stdio.h> /* perror */
 # include <unistd.h>
