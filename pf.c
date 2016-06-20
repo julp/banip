@@ -21,7 +21,7 @@ typedef struct {
     int fd;
 } pf_data_t;
 
-static void *pf_open(const char *tablename)
+static void *pf_open(const char *UNUSED(tablename))
 {
     pf_data_t *data;
 
