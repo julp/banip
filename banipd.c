@@ -277,7 +277,7 @@ int main(int argc, char **argv)
     if (NULL != engine->open) {
         ctxt = engine->open(tablename);
     }
-    if (engine->drop_privileges) {
+    if (0 == getuid() && engine->drop_privileges) {
         struct passwd *pwd;
 
         if (NULL == (pwd = getpwnam("nobody"))) {
