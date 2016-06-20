@@ -1,3 +1,4 @@
+#include <sys/param.h> /* __FreeBSD__ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
