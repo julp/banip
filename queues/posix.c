@@ -88,7 +88,14 @@ queue_err_t queue_open(void *p, const char *filename, int flags)
             umask(oldmask);
 #ifdef __FreeBSD__
             if (ENOSYS == errno) {
-                // please load mqueuefs module with kldload or recompile your kernel to include "options P1003_1B_MQUEUE"
+#if 1
+                fputs("please load mqueuefs module with kldload or recompile your kernel to include \"options P1003_1B_MQUEUE\"\n", stderr);
+#else
+# include <sys/linker.h>
+                if (-1 == kldload("mqueuefs")) {
+                    fputs("kldload(\"mqueuefs\") failed\n", stderr);
+                }
+#endif
             }
 #endif
         }
