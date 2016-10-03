@@ -4,7 +4,8 @@
 #include "common.h"
 #include "command.h"
 
-int run_command(const char *format, ...)
+// TODO: system is NOT safe and sanitize arguments first? (imply to change run_command("command %s", IP) to run_command({ "command", IP })?)
+bool run_command(char **UNUSED(error), const char *format, ...)
 {
     int l;
     va_list ap;
@@ -15,8 +16,8 @@ int run_command(const char *format, ...)
     va_end(ap);
     if (l >= STR_SIZE(buffer)) {
         // error: overflow
-        return 0;
+        return false;
     }
 
-    return system(buffer);
+    return 0 == system(buffer);
 }

@@ -42,7 +42,7 @@ typedef struct {
     char buf[MNL_SOCKET_BUFFER_SIZE];
 } nftables_data_t;
 
-static void *nftables_open(const char *UNUSED(tablename))
+static void *nftables_open(const char *UNUSED(tablename), char **error)
 {
     nftables_data_t *data;
 
@@ -66,7 +66,7 @@ static void *nftables_open(const char *UNUSED(tablename))
     return data;
 }
 
-static int nftables_handle(void *ctxt, const char *tablename, addr_t addr)
+static bool nftables_handle(void *ctxt, const char *tablename, addr_t addr, char **error)
 {
     int ret;
     nftables_data_t *data;
@@ -110,7 +110,7 @@ errc("mnl_cb_run failed");
         errc("mnl_socket_recvfrom failed"); // ENOENT 2 /* No such file or directory */
     }
 
-    return 1;
+    return true;
 }
 
 static void nftables_close(void *ctxt)

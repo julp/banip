@@ -1,2 +1,0 @@
-#cmakedefine HAVE_POSIX_QUEUE
-#cmakedefine HAVE_LIBBSD_STRLCPY

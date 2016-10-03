@@ -1,0 +1,27 @@
+#pragma once
+
+#cmakedefine WITH_PF
+#cmakedefine WITH_PFCTL
+#cmakedefine WITH_IPSET
+#cmakedefine WITH_IPTABLES
+#cmakedefine WITH_NFTABLES
+#cmakedefine WITH_NPF
+#cmakedefine WITH_NPFCTL
+#cmakedefine NPF_ALLOW_NAMED_TABLE
+
+#ifdef WITH_PFCTL
+# define PFCTL_EXECUTABLE "@PFCTL_EXECUTABLE@"
+#endif /* WITH_PFCTL */
+
+#ifdef WITH_NPFCTL
+# define NPFCTL_EXECUTABLE "@NPFCTL_EXECUTABLE@"
+#endif /* WITH_NPFCTL */
+
+#ifdef WITH_IPTABLES
+# define IPTABLES_EXECUTABLE "@IPTABLES_EXECUTABLE@"
+# ifdef WITH_IPSET
+#  define IPSET_EXECUTABLE "@IPSET_EXECUTABLE@"
+# endif /* WITH_IPSET */
+#endif /* WITH_IPTABLES */
+
+#define DEFAULT_CONFIGURATION_FILE "@DEFAULT_CONFIGURATION_FILE@"

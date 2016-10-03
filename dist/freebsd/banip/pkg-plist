@@ -1,2 +1,2 @@
 sbin/banipd
-sbin/banip-cli
+bin/banip-cli

@@ -1,8 +1,6 @@
 # banip
 
-Ban an IP address on demand through a POSIX or System V queue
-
-Prefered queue implementation is POSIX one (more flexible) - fallback to System V one if POSIX queue is not available.
+Ban an IP address on demand.
 
 ## Usage
 
@@ -13,10 +11,6 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 * `-e/--engine <engine>`: name of the firewall to use (optional except for NetBSD if PF and NPF are both enabled)
 * `-l/--log <filename>`: logfile (default: stderr)
 * `-p/--pid <filename>`: pidfile (default: none)
-* `-q/--queue <queue name>`: name of the queue
-* `-g/--group <group>`: name of the group to run as
-* `-b/--msgsize <size>`: maximum messages size (in bytes) (default: 1024)
-* `-s/--qsize <size>`: maximum messages in queue (default: 10)
 * `-t/--table <table name>`: name of the table/set/chain
 
 ## Supported firewalls
@@ -40,7 +34,7 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 
 WARNING: for now, NPF gives a numeric identifier to tables but they could change when reloading your rules.
 
-Table names are only supported in NetBSD-current.
+Table names are only supported since NetBSD >= 7.0.
 
 ### iptables (Linux)
 
@@ -88,10 +82,6 @@ make
 ```
 
 ## Best practices
-
-### Who can send (write) message
-
-Create a specific group and run varnish or any client and this program under it (in fact, this is mandatory, else you'll get "permission denied" error, because queue is not writable by "others")
 
 ### Always keep an access to your host
 

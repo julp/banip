@@ -16,10 +16,8 @@ pidfile="/var/run/${name}.pid"
 
 : ${banipd_enable:="NO"}
 : ${banipd_table:="blacklist"}
-: ${banipd_queue:="/banipd"}
-: ${banipd_group:="varnish"}
 : ${banipd_log:="/var/log/banipd.log"}
-: ${banipd_flags:="-d -g ${banipd_group} -p ${pidfile} -l ${banipd_log} -t ${banipd_table} -q ${banipd_queue}"}
+: ${banipd_flags:="-d -p ${pidfile} -l ${banipd_log} -t ${banipd_table}"}
 
 command="/usr/local/sbin/banipd"
 procname="${command}" # Even if FreeBSD has a pidfile, it looks also for processus name

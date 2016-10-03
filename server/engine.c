@@ -1,14 +1,23 @@
 #include <string.h>
 
+#include "config.h"
 #include "engine.h"
 
 #ifdef WITH_PF
 extern engine_t pf_engine;
 #endif /* PF */
 
+#ifdef WITH_PFCTL
+extern engine_t pfctl_engine;
+#endif /* PFCTL */
+
 #ifdef WITH_NPF
 extern engine_t npf_engine;
 #endif /* NPF */
+
+#ifdef WITH_NPFCTL
+extern engine_t npfctl_engine;
+#endif /* NPFCTL */
 
 #ifdef WITH_NFTABLES
 extern engine_t nftables_engine;
@@ -28,9 +37,15 @@ static const engine_t *available_engines[] = {
 #ifdef WITH_PF
     &pf_engine,
 #endif /* PF */
+#ifdef WITH_PFCTL
+    &pfctl_engine,
+#endif /* PFCTL */
 #ifdef WITH_NPF
     &npf_engine,
 #endif /* NPF */
+#ifdef WITH_NPFCTL
+    &npfctl_engine,
+#endif /* NPFCTL */
 #ifdef WITH_NFTABLES
     &nftables_engine,
 #endif /* NFTABLES */

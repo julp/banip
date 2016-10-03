@@ -29,35 +29,27 @@ cd $HOME/libvmod-msgsend
 struct vmod_msgsend_mqueue {
     unsigned magic;
     #define VMOD_MSGSEND_OBJ_MAGIC 0x9966feff
-    void *queue;
-    const char *queue_name;
+    void *client;
 };
 
-VCL_VOID vmod_mqueue__init(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue **qp, const char *vcl_name, VCL_STRING queue_name)
+VCL_VOID vmod_mqueue__init(VRT_CTX, struct vmod_msgsend_mqueue **qp, const char *vcl_name, VCL_STRING path)
 {
-    void *queue;
+    void *client;
     struct vmod_msgsend_mqueue *q;
 
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     AN(qp);
     AZ(*qp);
-    if (NULL == (queue = queue_init())) {
+    if (banip_connect(&client, false, path)) {
         if (NULL != ctx->vsl) {
-            VSLb(ctx->vsl, SLT_Error, "Can't init queue");
+            VSLb(ctx->vsl, SLT_Error, "Can't init client");
         }
     }
-    if (QUEUE_ERR_OK != queue_open(queue, queue_name, QUEUE_FL_SENDER)) {
-        if (NULL != ctx->vsl) {
-            VSLb(ctx->vsl, SLT_Error, "Can't open queue '%s'", queue_name);
-        }
-        queue_close(&queue);
-    }
-    XXXAN(queue);
+    XXXAN(client);
     ALLOC_OBJ(q, VMOD_MSGSEND_OBJ_MAGIC);
     AN(q);
     *qp = q;
-    q->queue = queue;
-    q->queue_name = queue_name;
+    q->client = client;
     AN(*qp);
 }
 
@@ -65,20 +57,35 @@ VCL_VOID vmod_mqueue__fini(struct vmod_msgsend_mqueue **qp)
 {
     AN(qp);
     CHECK_OBJ_NOTNULL(*qp, VMOD_MSGSEND_OBJ_MAGIC);
-    queue_close(&(*qp)->queue);
+    banip_close((*qp)->client);
     FREE_OBJ(*qp);
     *qp = NULL;
 }
 
 VCL_VOID __match_proto__()
-vmod_mqueue_sendmsg(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue *q, VCL_STRING message)
+vmod_mqueue_sendmsg(VRT_CTX, struct vmod_msgsend_mqueue *q)
 {
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     CHECK_OBJ_NOTNULL(q, VMOD_MSGSEND_OBJ_MAGIC);
+	CHECK_OBJ_NOTNULL(ctx->req, REQ_MAGIC);
+	CHECK_OBJ_NOTNULL(ctx->req->sp, SESS_MAGIC);
 
-    if (QUEUE_ERR_OK == queue_send(q->queue, message, -1)) {
-        VSLb(ctx->vsl, SLT_Debug, "Message '%s' sent on mqueue '%s'", message, q->queue_name);
+    if (banip_ban_from_fd(q->client, ctx->req->sp->fd, NULL, 0)) {
+        VSLb(ctx->vsl, SLT_Debug, "Message '%s' sent on mqueue");
     } else {
-        VSLb(ctx->vsl, SLT_Error, "Failed sending message '%s' on '%s'", message, q->queue_name);
+        VSLb(ctx->vsl, SLT_Error, "Failed sending message '%s'");
     }
 }
+
+#if 0
+struct sess . fd
+struct http_conn . fd
+
+struct busyobj . htc
+struct req . htc
+
+ctx->req->sp->fd ?
+ctx->sp->fd ?
+ctx->bo->htc->fd ?
+ctx->req->htc->fd ?
+#endif
