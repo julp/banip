@@ -1,7 +1,17 @@
 #include <stdlib.h>
 
-#include "vrt.h"
-#include "cache/cache.h"
+#include <cache/cache.h>
+#include <vcl.h>
+
+#ifndef VRT_H_INCLUDED
+# include <vrt.h>
+#endif /* !VRT_H_INCLUDED */
+
+#ifndef VDEF_H_INCLUDED
+# include <vdef.h>
+#endif /* !VDEF_H_INCLUDED */
+
+#include <string.h>
 
 #include "vcc_if.h"
 
@@ -70,8 +80,7 @@ VCL_VOID vmod_mqueue__fini(struct vmod_msgsend_mqueue **qp)
     *qp = NULL;
 }
 
-VCL_VOID __match_proto__()
-vmod_mqueue_sendmsg(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue *q, VCL_STRING message)
+VCL_VOID vmod_mqueue_sendmsg(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue *q, VCL_STRING message)
 {
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     CHECK_OBJ_NOTNULL(q, VMOD_MSGSEND_OBJ_MAGIC);
