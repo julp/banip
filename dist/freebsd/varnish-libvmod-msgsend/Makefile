@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	libvmod-msgsend
-PORTVERSION=	1.1
+PORTVERSION=	1.2
 PORTREVISION=	4
 CATEGORIES=	www
 PKGNAMEPREFIX=	varnish-
@@ -14,10 +14,10 @@ LICENSE=	BSD2CLAUSE
 
 USE_GITHUB=	yes
 GH_ACCOUNT=	julp
-GH_TAGNAME=	3ad2358
+GH_TAGNAME=	69e6e46
 GH_PROJECT=	${DISTNAME}
 
-USES=		cmake:outsource pkgconfig varnish
+USES=		cmake pkgconfig varnish
 WRKSRC=		${WRKDIR}/${GH_PROJECT}-${GH_TAGNAME}/clients/varnish4
 
 XFLAGS=		-I${LOCALBASE}/include -I${LOCALBASE}/include/varnish
