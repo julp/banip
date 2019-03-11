@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	banip
-PORTVERSION=	1.1
+PORTVERSION=	1.2
 PORTREVISION=	3
 CATEGORIES=	security
 
@@ -10,10 +10,10 @@ COMMENT=	Interface for few firewalls to dynamically add IP ban
 
 LICENSE=	BSD2CLAUSE
 
-USES=		cmake:outsource
+USES=		cmake
 USE_GITHUB=	yes
 GH_ACCOUNT=	julp
-GH_TAGNAME=	3ad2358
+GH_TAGNAME=	69e6e46
 
 USE_RC_SUBR=	banipd
 
