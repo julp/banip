@@ -17,7 +17,7 @@ GH_ACCOUNT=	julp
 GH_TAGNAME=	69e6e46
 GH_PROJECT=	${DISTNAME}
 
-USES=		cmake pkgconfig varnish
+USES=		cmake pkgconfig python:3.4+,build varnish
 WRKSRC=		${WRKDIR}/${GH_PROJECT}-${GH_TAGNAME}/clients/varnish4
 
 XFLAGS=		-I${LOCALBASE}/include -I${LOCALBASE}/include/varnish
