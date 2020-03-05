@@ -84,7 +84,7 @@ static void npf_close(void *ctxt)
 }
 
 const engine_t npf_engine = {
-    TRUE,
+    true,
     "npf",
     npf_open,
     npf_handle,

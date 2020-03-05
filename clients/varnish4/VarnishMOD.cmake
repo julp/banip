@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-if(NOT DEFINED VARNISHSRC)
-    message(WARNING "You may need to add -DVARNISHSRC:PATH=/path/to/varnish/sources to your cmake command line or define it through its GUI (ccmake & co)")
-endif(NOT DEFINED VARNISHSRC)
+#if(NOT DEFINED VARNISHSRC)
+    #message(WARNING "You may need to add -DVARNISHSRC:PATH=/path/to/varnish/sources to your cmake command line or define it through its GUI (ccmake & co)")
+#endif(NOT DEFINED VARNISHSRC)
 
-find_package(PythonInterp REQUIRED)
 find_package(PkgConfig QUIET)
 
 set(PKG_VARNISHAPI_NAME "varnishapi")
@@ -38,6 +37,17 @@ endif(PKG_CONFIG_FOUND)
 #     set(VARNISHAPI_MINOR_VERSION ${CMAKE_MATCH_2})
 #     set(VARNISHAPI_PATH_VERSION ${CMAKE_MATCH_3})
 # endif(VARNISHAPI_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+
+# if(VARNISHAPI_VERSION VERSION_LESS "6.2.0")
+    find_package(PythonInterp REQUIRED)
+# else(VARNISHAPI_VERSION VERSION_LESS "6.2.0")
+    # Varnish 6.2.0 requires Python >= 3.4.0
+    # We use Python3 "package" in order to specificly find a python 3 version
+    # as there can be several python executables/versions on a same host
+#     find_package(Python3 3.4 REQUIRED)
+    # alias Python3_EXECUTABLE as PYTHON_EXECUTABLE for compatibility
+#     set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+# endif(VARNISHAPI_VERSION VERSION_LESS "6.2.0")
 
 macro(declare_vmod)
     cmake_parse_arguments(VMOD "INSTALL;UNSTRICT" "NAME;VCC" "ADDITIONNAL_INCLUDE_DIRECTORIES;ADDITIONNAL_LIBRARIES;SOURCES" ${ARGN})

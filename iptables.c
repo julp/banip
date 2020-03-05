@@ -11,7 +11,7 @@ static int iptables_handle(void *UNUSED(ctxt), const char *tablename, addr_t add
 }
 
 const engine_t iptables_engine = {
-    FALSE,
+    false,
     "iptables",
     NULL,
     iptables_handle,

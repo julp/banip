@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 2.8.8)
 
-set(CMAKE_C_FLAGS_MAINTAINER "-g -DDEBUG -Wall -Wextra -std=gnu99 -Wwrite-strings -Wstrict-prototypes -Wuninitialized -Wunreachable-code -Wno-comment -Wnonnull"
-    CACHE STRING "Flags used by the C compiler during maintainer builds." FORCE)
-mark_as_advanced(CMAKE_C_FLAGS_MAINTAINER)
-set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES} Maintainer")
+if(CMAKE_VERSION VERSION_GREATER "3.1.0")
+    set(CMAKE_C_STANDARD 99)
+    set(CMAKE_C_STANDARD_REQUIRED TRUE)
+else(CMAKE_VERSION VERSION_GREATER "3.1.0")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99") # "poor" fallback
+endif(CMAKE_VERSION VERSION_GREATER "3.1.0")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wwrite-strings -Wstrict-prototypes -Wuninitialized -Wunreachable-code -Wno-comment -Wnonnull -Wunreachable-code")
 
 set(SOURCES "engine.c;parse.c;")
 set(LIBRARIES "queue;")
