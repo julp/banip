@@ -16,29 +16,35 @@
 #include "parse.h"
 #include "err.h"
 
-int parse_ulong(const char *str, unsigned long *val)
+bool parse_ulong(const char *str, unsigned long *val, char **error)
 {
-    char *endptr;
+    bool ok;
 
-    *val = strtoul(str, &endptr, 10);
-    if ((ERANGE == errno && ULONG_MAX == *val) || (0 != errno && 0 == *val)) {
-        errx("overflow or underflow for '%s'", str);
-        return 0;
-    }
-    if (endptr == str) {
-        errx("number expected, no digit found");
-        return 0;
-    }
-    if ('\0' != *endptr) {
-        errx("number expected, non digit found %c in %s", *endptr, str);
-        return 0;
-    }
-    if (*val <= 0) {
-        errx("number should be greater than 0, got %ld", *val);
-        return 0;
-    }
+    ok = false;
+    do {
+        char *endptr;
 
-    return 1;
+        *val = strtoul(str, &endptr, 10);
+        if ((ERANGE == errno && ULONG_MAX == *val) || (0 != errno && 0 == *val)) {
+            set_generic_error(error, "overflow or underflow for '%s'", str);
+            break;
+        }
+        if (endptr == str) {
+            set_generic_error(error, "number expected, no digit found");
+            break;
+        }
+        if ('\0' != *endptr) {
+            set_generic_error(error, "number expected, non digit found %c in %s", *endptr, str);
+            break;
+        }
+        if (*val <= 0) {
+            set_generic_error(error, "number should be greater than 0, got %ld", *val);
+            break;
+        }
+        ok = true;
+    } while (false);
+
+    return ok;
 }
 
 #if 0
@@ -106,69 +112,93 @@ if (!flagtmp)
     flagtmp = ip4_matchnet(&(thisip->addr), &privc, 16);
 #endif
 
-
-
-int parse_addr(const char *string, addr_t *addr)
+bool parse_addr(const char *string, addr_t *addr, char **error)
 {
-    char *p, *buffer;
+    bool ok;
+    char *buffer;
+    struct addrinfo *res;
 
+    ok = false;
+    res = NULL;
     buffer = (char *) string;
-    bzero(addr, sizeof(*addr));
-    if (NULL != (p = strchr(string, '/'))) {
-        int ret;
-        unsigned long prefix;
-        struct addrinfo *res;
-        struct addrinfo hints;
+    do {
+        char *p;
 
-        buffer = strdup(string);
-        buffer[p - string] = '\0';
-        parse_ulong(++p, &prefix);
-        bzero(&hints, sizeof(hints));
-        hints.ai_flags |= AI_NUMERICHOST;
-        if (0 != (ret = getaddrinfo(buffer, NULL, &hints, &res))) {
-            errc("getaddrinfo failed: %s", gai_strerror(ret));
-        }
-        if (res->ai_family == AF_INET && prefix > 32) {
-            errx("prefix too long for AF_INET");
-        } else if (res->ai_family == AF_INET6 && prefix > 128) {
-            errx("prefix too long for AF_INET6");
-        }
-        switch (res->ai_family) {
-            case AF_INET:
-                ret = inet_pton(AF_INET, buffer, &addr->sa.v4);
-                assert(1 == ret);
+        bzero(addr, sizeof(*addr));
+        if (NULL != (p = strchr(string, '/'))) {
+            int ret;
+            unsigned long prefix;
+            struct addrinfo hints;
+
+            buffer = strdup(string);
+            buffer[p - string] = '\0';
+            parse_ulong(++p, &prefix, error);
+            bzero(&hints, sizeof(hints));
+            hints.ai_flags |= AI_NUMERICHOST;
+            if (0 != (ret = getaddrinfo(buffer, NULL, &hints, &res))) {
+                set_generic_error(error, "getaddrinfo failed: %s", gai_strerror(ret));
+                break;
+            }
+            if (res->ai_family == AF_INET && prefix > 32) {
+                set_generic_error(error, "prefix too long for AF_INET");
+                break;
+            } else if (res->ai_family == AF_INET6 && prefix > 128) {
+                set_generic_error(error, "prefix too long for AF_INET6");
+                break;
+            }
+#if 0
+            switch (res->ai_family) {
+                case AF_INET:
+                    ret = inet_pton(AF_INET, buffer, &addr->sa.v4);
+                    assert(1 == ret);
+                    addr->sa_size = sizeof(addr->sa.v4);
+                    break;
+                case AF_INET6:
+                    ret = inet_pton(AF_INET6, buffer, &addr->sa.v6);
+                    assert(1 == ret);
+                    addr->sa_size = sizeof(addr->sa.v6);
+                    break;
+                default:
+                    assert(0);
+            }
+#else
+            if (AF_INET == res->ai_family && 1 == inet_pton(AF_INET, buffer, &addr->sa.v4)) {
                 addr->sa_size = sizeof(addr->sa.v4);
-                break;
-            case AF_INET6:
-                ret = inet_pton(AF_INET6, buffer, &addr->sa.v6);
-                assert(1 == ret);
+            } else if (AF_INET6 == res->ai_family && 1 == inet_pton(AF_INET6, buffer, &addr->sa.v6)) {
                 addr->sa_size = sizeof(addr->sa.v6);
+            } else {
+                set_generic_error(error, "valid address expected, got: %s", buffer);
                 break;
-            default:
-                assert(0);
-        }
-        addr->netmask = prefix;
-        addr->fa = res->ai_family;
-        freeaddrinfo(res);
-    } else {
-        if (1 == inet_pton(AF_INET, buffer, &addr->sa.v4)) {
-            addr->fa = AF_INET;
-            addr->netmask = 32;
-            addr->sa_size = sizeof(addr->sa.v4);
-        } else if (1 == inet_pton(AF_INET6, buffer, &addr->sa.v6)) {
-            addr->fa = AF_INET6;
-            addr->netmask = 64;
-            addr->sa_size = sizeof(addr->sa.v6);
+            }
+#endif
+            addr->netmask = prefix;
+            addr->fa = res->ai_family;
         } else {
-            warn("Valid address expected, got: %s", buffer);
+            if (1 == inet_pton(AF_INET, buffer, &addr->sa.v4)) {
+                addr->fa = AF_INET;
+                addr->netmask = 32;
+                addr->sa_size = sizeof(addr->sa.v4);
+            } else if (1 == inet_pton(AF_INET6, buffer, &addr->sa.v6)) {
+                addr->fa = AF_INET6;
+                addr->netmask = 64;
+                addr->sa_size = sizeof(addr->sa.v6);
+            } else {
+                set_generic_error(error, "valid address expected, got: %s", buffer);
+                break;
+            }
         }
-    }
-    if (strlcpy(addr->humanrepr, buffer, STR_SIZE(addr->humanrepr)) >= STR_SIZE(addr->humanrepr)) {
-        errx("buffer overflow");
+        if (strlcpy(addr->humanrepr, buffer, STR_SIZE(addr->humanrepr)) >= STR_SIZE(addr->humanrepr)) {
+            set_generic_error(error, "buffer overflow");
+            break;
+        }
+        ok = true;
+    } while (false);
+    if (NULL != res) {
+        freeaddrinfo(res);
     }
     if (buffer != string) {
         free(buffer);
     }
 
-    return 1;
+    return ok;
 }

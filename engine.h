@@ -7,9 +7,9 @@
 typedef struct {
     bool drop_privileges;
     const char * const name;
-    void *(*open)(const char *);
+    void *(*open)(const char *, char **);
 //     int (*getopt)(void *, int, const char *);
-    int (*handle)(void *, const char *, addr_t);
+    bool (*handle)(void *, const char *, addr_t, char **);
     void (*close)(void *);
 } engine_t;
 

@@ -141,12 +141,14 @@ int main(int argc, char **argv)
 {
     gid_t gid;
     addr_t addr;
+    char *error;
     struct sigaction sa;
     int c, dFlag, vFlag;
     unsigned long max_message_size;
     const char *queuename, *tablename;
 
     ctxt = NULL;
+    error = NULL;
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
@@ -169,8 +171,10 @@ int main(int argc, char **argv)
             {
                 unsigned long val;
 
-                if (parse_ulong(optarg, &val)) {
+                if (parse_ulong(optarg, &val, &error)) {
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, val); // TODO: check returned value
+                } else {
+                    errx("invalid value for option -b/--msgsize: %s", error);
                 }
                 break;
             }
@@ -213,8 +217,10 @@ int main(int argc, char **argv)
             {
                 unsigned long val;
 
-                if (parse_ulong(optarg, &val)) {
+                if (parse_ulong(optarg, &val, &error)) {
                     queue_set_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, val); // TODO: check returned value
+                } else {
+                    errx("invalid value for option -s/--qsize: %s", error);
                 }
                 break;
             }
@@ -275,7 +281,7 @@ int main(int argc, char **argv)
         errx("calloc failed");
     }
     if (NULL != engine->open) {
-        ctxt = engine->open(tablename);
+        ctxt = engine->open(tablename, &error);
     }
     if (0 == getuid() && engine->drop_privileges) {
         struct passwd *pwd;
@@ -296,12 +302,13 @@ int main(int argc, char **argv)
         if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
             errc("queue_receive failed"); // TODO: better
         } else {
-            if (!parse_addr(buffer, &addr)) {
+            if (!parse_addr(buffer, &addr, &error)) {
                 errx("parsing of '%s' failed", buffer); // TODO: better
             } else {
-                engine->handle(ctxt, tablename, addr);
+                engine->handle(ctxt, tablename, addr, &error);
             }
         }
+        // TODO: handle and clear error
     }
     /* not reached */
 

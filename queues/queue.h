@@ -1,21 +1,19 @@
-#ifndef QUEUE_H
+#pragma once
 
-# define QUEUE_H
-
-# define QUEUE_FL_SENDER (1<<0)
-# define QUEUE_FL_OWNER  (1<<1)
+#define QUEUE_FL_SENDER (1<<0)
+#define QUEUE_FL_OWNER  (1<<1)
 
 typedef enum {
     QUEUE_ERR_OK,
     QUEUE_ERR_GENERAL_FAILURE,
     QUEUE_ERR_NOT_SUPPORTED,
-    QUEUE_ERR_NOT_OWNER
+    QUEUE_ERR_NOT_OWNER,
 } queue_err_t;
 
 typedef enum {
-    QUEUE_ATTR_MAX_QUEUE_SIZE,      // in bytes, System V only (even if for POSIX we can get it by: mq_msgsize * mq_maxmsg)
-    QUEUE_ATTR_MAX_MESSAGE_SIZE,    // in bytes, POSIX only
-    QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE // POSIX only
+    QUEUE_ATTR_MAX_QUEUE_SIZE,       // in bytes, System V only (even if for POSIX we can get it by: mq_msgsize * mq_maxmsg)
+    QUEUE_ATTR_MAX_MESSAGE_SIZE,     // in bytes, POSIX only
+    QUEUE_ATTR_MAX_MESSAGE_IN_QUEUE, // POSIX only
 } queue_attr_t;
 
 /**
@@ -110,5 +108,3 @@ queue_err_t queue_send(void *, const char *, int);
  * @return QUEUE_ERR_OK on success else QUEUE_ERR_GENERAL_FAILURE
  **/
 queue_err_t queue_close(void **);
-
-#endif /* !QUEUE_H */

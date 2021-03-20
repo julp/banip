@@ -4,7 +4,7 @@
 #include "common.h"
 #include "command.h"
 
-int run_command(const char *format, ...)
+int run_command(char **error, const char *format, ...)
 {
     int l;
     va_list ap;

@@ -4,11 +4,11 @@
 #include "common.h"
 #include "engine.h"
 
-static int dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), addr_t addr)
+static bool dummy_handle(void *UNUSED(ctxt), const char *UNUSED(tablename), addr_t addr, char **UNUSED(error))
 {
     fprintf(stderr, "Received: '%s'\n", addr.humanrepr);
 
-    return 1;
+    return true;
 }
 
 const engine_t dummy_engine = {

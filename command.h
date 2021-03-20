@@ -1,9 +1,5 @@
-#ifndef COMMAND_H
+#pragma once
 
-# define COMMAND_H
+#include <stdarg.h>
 
-# include <stdarg.h>
-
-int run_command(const char *, ...);
-
-#endif /* !COMMAND_H */
+int run_command(char **, const char *, ...);

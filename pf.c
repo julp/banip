@@ -21,16 +21,24 @@ typedef struct {
     int fd;
 } pf_data_t;
 
-static void *pf_open(const char *UNUSED(tablename))
+static void *pf_open(const char *UNUSED(tablename), char **error)
 {
     pf_data_t *data;
 
-    data = malloc(sizeof(*data));
-    if (-1 == (data->fd = open("/dev/pf", O_RDWR))) {
-        errc("failed opening /dev/pf");
-    }
-    CAP_RIGHTS_LIMIT(data->fd, CAP_READ, CAP_WRITE, CAP_IOCTL);
-    CAP_IOCTLS_LIMIT(data->fd, DIOCRADDADDRS, DIOCKILLSTATES);
+    do {
+        if (NULL == (data = malloc(sizeof(*data)))) {
+            set_malloc_error(error, sizeof(*data));
+            break;
+        }
+        if (-1 == (data->fd = open("/dev/pf", O_RDWR))) {
+            set_system_error(error, "failed opening /dev/pf");
+            free(data);
+            data = NULL;
+            break;
+        }
+        CAP_RIGHTS_LIMIT(data->fd, CAP_READ, CAP_WRITE, CAP_IOCTL);
+        CAP_IOCTLS_LIMIT(data->fd, DIOCRADDADDRS, DIOCKILLSTATES);
+    } while (false);
 #if 0
     {
         struct pfioc_table io;
@@ -63,7 +71,7 @@ static void *pf_open(const char *UNUSED(tablename))
  * Copyright (c) 2002,2003 Henning Brauer
  * https://svnweb.freebsd.org/base/head/sbin/pfctl/pfctl.c?revision=262799&view=markup#l546
  **/
-static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
+static bool pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr, char **error)
 {
     int ret;
     pf_data_t *data;
@@ -153,19 +161,21 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
         if (r > 0) {
             *((u_char *) &psk.psk_src.addr.v.a.mask.pfa.v6 + q) = (0xff00 >> r) & 0xff;
         }
-    }
+    } // TODO: else = error?
 #endif
     if (-1 == ioctl(data->fd, DIOCRADDADDRS, &io)) {
-        errc("ioctl(DIOCRADDADDRS) failed");
+        set_system_error(error, "ioctl(DIOCRADDADDRS) failed");
+        return false;
     }
 #if 0
     if (0 != (ret = getaddrinfo(buffer, NULL, NULL, &res))) {
 #else
     if (0 != (ret = getaddrinfo(parsed_addr.humanrepr, NULL, NULL, &res))) {
 #endif
-        errc("getaddrinfo failed: %s", gai_strerror(ret));
+        set_generic_error(error, "getaddrinfo failed: %s", gai_strerror(ret));
+        return false;
     }
-    for (resp = res; resp; resp = resp->ai_next) {
+    for (resp = res; NULL != resp; resp = resp->ai_next) {
         if (NULL == resp->ai_addr) {
             continue;
         }
@@ -183,10 +193,13 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
                 break;
             default:
                 freeaddrinfo(res);
-                errx("Unknown address family %d", psk.psk_af);
+                set_generic_error(error, "unknown address family %d", psk.psk_af);
+                return false;
         }
         if (-1 == ioctl(data->fd, DIOCKILLSTATES, &psk)) {
-            errc("ioctl(DIOCKILLSTATES) failed");
+            freeaddrinfo(res);
+            set_system_error(error, "ioctl(DIOCKILLSTATES) failed");
+            return false;
         }
     }
     freeaddrinfo(res);
@@ -194,7 +207,7 @@ static int pf_handle(void *ctxt, const char *tablename, addr_t parsed_addr)
     free(buffer);
 #endif
 
-    return 1;
+    return true;
 }
 
 static void pf_close(void *ctxt)

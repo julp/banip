@@ -9,8 +9,12 @@ endif(CMAKE_VERSION VERSION_GREATER "3.1.0")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wwrite-strings -Wstrict-prototypes -Wuninitialized -Wunreachable-code -Wno-comment -Wnonnull -Wunreachable-code")
 
-set(SOURCES "engine.c;parse.c;")
-set(LIBRARIES "queue;")
+set(SOURCES
+    queues/error.c
+    parse.c
+    engine.c
+)
+set(LIBRARIES queue)
 
 include_directories(queues)
 # To be able to include config.h when outsourcing
@@ -31,9 +35,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "BSD$")
         add_definitions(-DWITH_NPF)
         list(APPEND SOURCES npf.c)
     endif(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
-
 else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
-
     # Linux
     # nftables
     include(CheckIncludeFile)
@@ -56,7 +58,6 @@ else(CMAKE_SYSTEM_NAME MATCHES "BSD$")
     # XXX
     #add_executable(nft-set-elem-add nft-set-elem-add.c)
     #target_link_libraries(nft-set-elem-add ${LIBRARIES})
-
 endif(CMAKE_SYSTEM_NAME MATCHES "BSD$")
 
 list(APPEND SOURCES dummy.c)

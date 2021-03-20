@@ -23,6 +23,9 @@
 #define UNSET_FLAG(value, flag) \
     ((value) &= ~(flag))
 
+#include <stdbool.h>
+#include "error.h"
+
 enum {
     BANIPD_EXIT_SUCCESS = 0,
     BANIPD_EXIT_FAILURE,

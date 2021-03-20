@@ -42,31 +42,42 @@ typedef struct {
     char buf[MNL_SOCKET_BUFFER_SIZE];
 } nftables_data_t;
 
-static void *nftables_open(const char *UNUSED(tablename))
+static void *nftables_open(const char *UNUSED(tablename), char **error)
 {
     nftables_data_t *data;
 
-    data = malloc(sizeof(*data));
-    if (NULL == (data->nl = mnl_socket_open(NETLINK_GENERIC))) {
-        errc("mnl_socket_open failed");
-    }
-    if (mnl_socket_bind(data->nl, 0, MNL_SOCKET_AUTOPID) < 0) {
-        errc("mnl_socket_bind failed");
-    }
-    data->portid = mnl_socket_get_portid(data->nl);
-    data->s = nft_set_alloc();
+    do {
+        if (NULL == (data = malloc(sizeof(*data))) {
+            set_malloc_error(error, sizeof(*data));
+            break;
+        }
+        if (NULL == (data->nl = mnl_socket_open(NETLINK_GENERIC))) {
+            free(data);
+            data = NULL;
+            set_system_error("mnl_socket_open failed");
+            break;
+        }
+        if (mnl_socket_bind(data->nl, 0, MNL_SOCKET_AUTOPID) < 0) {
+            free(data);
+            data = NULL;
+            set_system_error("mnl_socket_bind failed");
+            break;
+        }
+        data->portid = mnl_socket_get_portid(data->nl);
+        data->s = nft_set_alloc();
 #if 0
-    data->e = nft_set_elem_alloc();
-    nft_set_elem_add(data->s, data->e);
+        data->e = nft_set_elem_alloc();
+        nft_set_elem_add(data->s, data->e);
 #else
-    data->e = NULL;
+        data->e = NULL;
 #endif
-    nft_set_attr_set(data->s, NFT_SET_ATTR_TABLE, "filter");
+        nft_set_attr_set(data->s, NFT_SET_ATTR_TABLE, "filter");
+    } while (false);
 
     return data;
 }
 
-static int nftables_handle(void *ctxt, const char *tablename, addr_t addr)
+static bool nftables_handle(void *ctxt, const char *tablename, addr_t addr, char **error)
 {
     int ret;
     nftables_data_t *data;
@@ -96,21 +107,24 @@ static int nftables_handle(void *ctxt, const char *tablename, addr_t addr)
     nft_set_elems_nlmsg_build_payload(nlh, data->s);
 //     data->portid = mnl_socket_get_portid(data->nl);
     if (mnl_socket_sendto(data->nl, nlh, nlh->nlmsg_len) < 0) {
-        errc("mnl_socket_sendto failed");
+        set_system_error(error, "mnl_socket_sendto failed");
+        return false;
     }
     ret = mnl_socket_recvfrom(data->nl, data->buf, MNL_SOCKET_BUFFER_SIZE);
     while (ret > 0) {
         if ((ret = mnl_cb_run(data->buf, ret, seq, data->portid, NULL, NULL)) <= 0) {
-errc("mnl_cb_run failed");
-            break;
+            set_system_error(error, "mnl_cb_run failed");
+            return false;
+            //break;
         }
         ret = mnl_socket_recvfrom(data->nl, data->buf, MNL_SOCKET_BUFFER_SIZE);
     }
     if (-1 == ret) {
-        errc("mnl_socket_recvfrom failed"); // ENOENT 2 /* No such file or directory */
+        set_system_error(error, "mnl_socket_recvfrom failed"); // ENOENT 2 /* No such file or directory */
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
 static void nftables_close(void *ctxt)

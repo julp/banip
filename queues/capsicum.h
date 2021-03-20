@@ -11,6 +11,7 @@
 # define CAP_IOCTLS_LIMIT(fd, ...) \
     do { \
         unsigned long cmds[] = { __VA_ARGS__ }; \
+ \
         if (0 != cap_ioctls_limit(fd, cmds, ARRAY_SIZE(cmds))) { \
             fprintf(stderr, "%s:%s:%d: fd is %d", __FILE__, __func__, __LINE__, (int) fd); \
             perror("cap_ioctls_limit"); \

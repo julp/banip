@@ -32,31 +32,53 @@ void _verr(int fatal, int errcode, const char *fmt, ...)
 
 int main(int argc, char **argv)
 {
+    int status;
     void *ctxt;
-    addr_t addr;
+    char *error;
     const engine_t *engine;
 
+    error = NULL;
     ctxt = NULL;
-    if (argc > 1) {
-        if (NULL == (engine = get_engine_by_name(argv[1]))) {
-            errx("unknown engine '%s'", argv[1]);
+    status = EXIT_FAILURE;
+    do {
+        addr_t addr;
+
+        if (argc > 1) {
+            if (NULL == (engine = get_engine_by_name(argv[1]))) {
+                set_generic_error(&error, "unknown engine '%s'", argv[1]);
+                break;
+            }
+        } else {
+            if (NULL == (engine = get_default_engine())) {
+                set_generic_error(&error, "no engine available for your system");
+                break;
+            }
         }
-    } else {
-        if (NULL == (engine = get_default_engine())) {
-            errx("no engine available for your system");
+        if (NULL != engine->open) {
+            if (NULL == (ctxt = engine->open(TABLENAME, &error))) {
+                break;
+            }
         }
-    }
-    if (NULL != engine->open) {
-        ctxt = engine->open(TABLENAME);
-    }
-    parse_addr("1.2.3.4", &addr);
-    engine->handle(ctxt, TABLENAME, addr);
-    if (NULL != engine->close) {
-        engine->close(ctxt);
+        if (!parse_addr("1.2.3.4", &addr, &error)) {
+            break;
+        }
+        if (!engine->handle(ctxt, TABLENAME, addr, &error)) {
+            break;
+        }
+        status = EXIT_SUCCESS;
+    } while (false);
+    if (NULL != error) {
+        fprintf(stderr, "%s\n", error);
+        error_free(&error);
     }
     if (NULL != ctxt) {
-        free(ctxt);
+        if (NULL != engine->close) {
+            engine->close(ctxt);
+        }
+        if (NULL != ctxt) {
+            free(ctxt);
+        }
     }
 
-    return EXIT_SUCCESS;
+    return status;
 }

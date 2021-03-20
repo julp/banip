@@ -12,19 +12,27 @@ typedef struct {
     int fd;
 } npf_data_t;
 
-static void *npf_open(const char *UNUSED(tablename))
+static void *npf_open(const char *UNUSED(tablename), char **error)
 {
     npf_data_t *data;
 
-    data = malloc(sizeof(*data));
-    if (-1 == (data->fd = open("/dev/npf", O_WRONLY))) {
-        errc("failed opening /dev/npf");
-    }
+    do {
+        if (NULL == (data = malloc(sizeof(*data))) {
+            set_malloc_error(error, sizeof(*data));
+            break;
+        }
+        if (-1 == (data->fd = open("/dev/npf", O_WRONLY))) {
+            free(data);
+            data = NULL;
+            set_system_error("failed opening /dev/npf");
+            break;
+        }
+    } while (false);
 
     return data;
 }
 
-static int npf_handle(void *ctxt, const char *tablename, addr_t addr)
+static bool npf_handle(void *ctxt, const char *tablename, addr_t addr, char **error)
 {
     int ret;
     npf_data_t *data;
@@ -64,10 +72,11 @@ static int npf_handle(void *ctxt, const char *tablename, addr_t addr)
     nct.nct_data.ent.alen = addr.sa_size;
     memcpy(&nct.nct_data.ent.addr, &addr.sa, addr.sa_size);
     if (-1 == ioctl(data->fd, IOC_NPF_TABLE, &nct)) {
-        errc("ioctl(IOC_NPF_TABLE) failed");
+        set_system_error(error, "ioctl(IOC_NPF_TABLE) failed");
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
 static void npf_close(void *ctxt)

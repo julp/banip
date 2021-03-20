@@ -1,11 +1,9 @@
-#ifndef PARSE_H
+#pragma once
 
-# define PARSE_H
-
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <stdint.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <stdint.h>
 
 typedef struct {
     union {
@@ -18,7 +16,5 @@ typedef struct {
     char humanrepr[INET6_ADDRSTRLEN + 1];
 } addr_t;
 
-int parse_addr(const char *, addr_t *);
-int parse_ulong(const char *, unsigned long *);
-
-#endif /* !PARSE_H */
+bool parse_addr(const char *, addr_t *, char **);
+bool parse_ulong(const char *, unsigned long *, char **);
