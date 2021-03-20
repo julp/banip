@@ -157,7 +157,7 @@ int parse_addr(const char *string, addr_t *addr)
             addr->sa_size = sizeof(addr->sa.v4);
         } else if (1 == inet_pton(AF_INET6, buffer, &addr->sa.v6)) {
             addr->fa = AF_INET6;
-            addr->netmask = 128;
+            addr->netmask = 64;
             addr->sa_size = sizeof(addr->sa.v6);
         } else {
             warn("Valid address expected, got: %s", buffer);
