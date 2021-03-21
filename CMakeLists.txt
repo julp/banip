@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8.8)
 
+project(banip C)
+
 if(CMAKE_VERSION VERSION_GREATER "3.1.0")
     set(CMAKE_C_STANDARD 99)
     set(CMAKE_C_STANDARD_REQUIRED TRUE)
@@ -67,7 +69,7 @@ add_library(__common_sources OBJECT EXCLUDE_FROM_ALL ${SOURCES})
 add_executable(banipd $<TARGET_OBJECTS:__common_sources> banipd.c)
 target_link_libraries(banipd ${LIBRARIES})
 
-add_executable(banip-cli banip-cli.c)
+add_executable(banip-cli banip-cli.c queues/error.c)
 target_link_libraries(banip-cli queue)
 
 # Programs for testing

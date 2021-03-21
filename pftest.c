@@ -9,7 +9,7 @@
 
 #define TABLENAME "blacklist"
 
-void _verr(int fatal, int errcode, const char *fmt, ...)
+void _verr(bool fatal, int errcode, const char *fmt, ...)
 {
     va_list ap;
 

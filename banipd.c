@@ -49,7 +49,7 @@ static void usage(void) {
 
 static FILE *err_file = NULL;
 
-void _verr(int fatal, int errcode, const char *fmt, ...)
+void _verr(bool fatal, int errcode, const char *fmt, ...)
 {
     time_t t;
     va_list ap;
@@ -102,7 +102,7 @@ static void cleanup(void)
         free(ctxt);
         ctxt = NULL;
     }
-    queue_close(&queue);
+    queue_close(&queue, NULL);
     if (NULL != pidfilename) {
         if (0 != unlink(pidfilename)) {
             warnc("unlink failed");
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
     gid = (gid_t) -1;
     vFlag = dFlag = 0;
     tablename = queuename = NULL;
-    if (NULL == (queue = queue_init())) {
+    if (NULL == (queue = queue_init(&error))) {
         errx("queue_init failed"); // TODO: better
     }
     atexit(cleanup);
@@ -242,75 +242,84 @@ int main(int argc, char **argv)
         usage();
     }
 
-    if (dFlag) {
-        if (0 != daemon(0, !vFlag)) {
-            errc("daemon failed");
-        }
-    }
-    if (NULL != pidfilename) {
-        FILE *fp;
-
-        if (NULL == (fp = fopen(pidfilename, "w"))) {
-            warnc("can't create pid file '%s'", pidfilename);
-        } else {
-            fprintf(fp, "%ld\n", (long) getpid());
-            fclose(fp);
-        }
-    }
-
-    if (((gid_t) -1) != gid) {
-        if (0 != setgid(gid)) {
-            errc("setgid failed");
-        }
-        if (0 != setgroups(1, &gid)) {
-            errc("setgroups failed");
-        }
-    }
-    CAP_RIGHTS_LIMIT(STDOUT_FILENO, CAP_WRITE);
-    CAP_RIGHTS_LIMIT(STDERR_FILENO, CAP_WRITE);
-    if (NULL != err_file/* && fileno(err_file) > 2*/) {
-        CAP_RIGHTS_LIMIT(fileno(err_file), CAP_WRITE);
-    }
-    if (QUEUE_ERR_OK != queue_open(queue, queuename, QUEUE_FL_OWNER)) {
-        errx("queue_open failed"); // TODO: better
-    }
-    if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {
-        errx("queue_get_attribute failed"); // TODO: better
-    }
-    if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
-        errx("calloc failed");
-    }
-    if (NULL != engine->open) {
-        ctxt = engine->open(tablename, &error);
-    }
-    if (0 == getuid() && engine->drop_privileges) {
-        struct passwd *pwd;
-
-        if (NULL == (pwd = getpwnam("nobody"))) {
-            if (NULL == (pwd = getpwnam("daemon"))) {
-                errx("no nobody or daemon user accounts found on this system");
+    do {
+        if (dFlag) {
+            if (0 != daemon(0, !vFlag)) {
+                set_system_error(&error, "daemon failed");
+                break;
             }
         }
-        if (0 != setuid(pwd->pw_uid)) {
-            errc("setuid failed");
-        }
-    }
-    CAP_ENTER();
-    while (1) {
-        ssize_t read;
+        if (NULL != pidfilename) {
+            FILE *fp;
 
-        if (-1 == (read = queue_receive(queue, buffer, max_message_size))) {
-            errc("queue_receive failed"); // TODO: better
-        } else {
-            if (!parse_addr(buffer, &addr, &error)) {
-                errx("parsing of '%s' failed", buffer); // TODO: better
+            if (NULL == (fp = fopen(pidfilename, "w"))) {
+                warnc("can't create pid file '%s'", pidfilename);
             } else {
-                engine->handle(ctxt, tablename, addr, &error);
+                fprintf(fp, "%ld\n", (long) getpid());
+                fclose(fp);
             }
         }
-        // TODO: handle and clear error
-    }
-    /* not reached */
 
-    return BANIPD_EXIT_SUCCESS;
+        if (((gid_t) -1) != gid) {
+            if (0 != setgid(gid)) {
+                set_system_error(&error, "setgid(%d) failed", gid);
+                break;
+            }
+            if (0 != setgroups(1, &gid)) {
+                set_system_error(&error, "setgroups to {%d} failed", gid);
+                break;
+            }
+        }
+        CAP_RIGHTS_LIMIT(STDOUT_FILENO, CAP_WRITE);
+        CAP_RIGHTS_LIMIT(STDERR_FILENO, CAP_WRITE);
+        if (NULL != err_file/* && fileno(err_file) > 2*/) {
+            CAP_RIGHTS_LIMIT(fileno(err_file), CAP_WRITE);
+        }
+        if (!queue_open(queue, queuename, QUEUE_FL_OWNER, &error)) {
+            break;
+        }
+        if (QUEUE_ERR_OK != queue_get_attribute(queue, QUEUE_ATTR_MAX_MESSAGE_SIZE, &max_message_size)) {
+            set_generic_error(&error, "queue_get_attribute failed");
+            break;
+        }
+        if (NULL == (buffer = calloc(++max_message_size, sizeof(*buffer)))) {
+            set_malloc_error(&error, max_message_size * sizeof(*buffer));
+            break;
+        }
+        if (NULL != engine->open && NULL == (ctxt = engine->open(tablename, &error))) {
+            break;
+        }
+        if (0 == getuid() && engine->drop_privileges) {
+            struct passwd *pwd;
+
+            if (NULL == (pwd = getpwnam("nobody")) && NULL == (pwd = getpwnam("daemon"))) {
+                set_generic_error(&error, "no nobody or daemon user accounts found on this system");
+                break;
+            }
+            if (0 != setuid(pwd->pw_uid)) {
+                set_system_error(&error, "setuid(%d) failed", pwd->pw_uid);
+                break;
+            }
+        }
+        CAP_ENTER();
+        while (1) {
+            ssize_t read;
+
+            if (
+                   -1 == (read = queue_receive(queue, buffer, max_message_size, &error))
+                || !parse_addr(buffer, &addr, &error)
+                || !engine->handle(ctxt, tablename, addr, &error)
+            ) {
+                _verr(0, 0, "%s", error); // TODO: transition
+                error_free(&error);
+            }
+        }
+        /* not reached */
+    } while (false);
+    if (NULL != error) {
+        _verr(0, 0, "%s", error); // TODO: transition
+        error_free(&error);
+    }
+
+    return BANIPD_EXIT_FAILURE;
 }

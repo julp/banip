@@ -1,13 +1,19 @@
-#ifndef ERR_H
+#pragma once
 
-# define ERR_H
+#include <stdarg.h>
+#include <stdbool.h>
+#include <errno.h>
 
-# include <errno.h>
-# define errx(fmt, ...)  _verr(1, 0, fmt, ## __VA_ARGS__)
-# define errc(fmt, ...)  _verr(1, errno, fmt, ## __VA_ARGS__)
-# define warnc(fmt, ...) _verr(0, errno, fmt, ## __VA_ARGS__)
-# define warn(fmt, ...)  _verr(0, 0, fmt, ## __VA_ARGS__)
+#define errx(fmt, ...) \
+    _verr(true, 0, fmt, ## __VA_ARGS__)
 
-void _verr(int, int, const char *, ...);
+#define errc(fmt, ...) \
+    _verr(true, errno, fmt, ## __VA_ARGS__)
 
-#endif /* !ERR_H */
+#define warnc(fmt, ...) \
+    _verr(false, errno, fmt, ## __VA_ARGS__)
+
+#define warn(fmt, ...) \
+    _verr(false, 0, fmt, ## __VA_ARGS__)
+
+void _verr(bool, int, const char *, ...);

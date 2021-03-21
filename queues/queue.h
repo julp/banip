@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #define QUEUE_FL_SENDER (1<<0)
 #define QUEUE_FL_OWNER  (1<<1)
 
@@ -26,7 +28,7 @@ typedef enum {
  *
  * @return a queue (a valid pointer) or NULL on failure
  **/
-void *queue_init(void);
+void *queue_init(char **);
 
 /**
  * Set an attribute (a maximum size of an internal stuff)
@@ -58,11 +60,11 @@ queue_err_t queue_set_attribute(void *, queue_attr_t, unsigned long);
  *   - QUEUE_FL_SENDER:   to send messages
  *   - QUEUE_FL_OWNER:    to own the queue (ie take in charge its creation and deletion)
  *
- * @return QUEUE_ERR_OK on success else QUEUE_ERR_GENERAL_FAILURE
+ * @return true on success
  *
  * Note: even if queue_open fails, call queue_close to cleanup internal stuffs
  **/
-queue_err_t queue_open(void *, const char *, int);
+bool queue_open(void *, const char *, int, char **);
 
 /**
  * Get current value of an attribute (a maximum size of an internal stuff)
@@ -89,7 +91,7 @@ queue_err_t queue_get_attribute(void *, queue_attr_t, unsigned long *);
  *
  * @return -1 on failure or the length of the message
  **/
-int queue_receive(void *, char *, size_t);
+int queue_receive(void *, char *, size_t, char **);
 
 /**
  * Send a message
@@ -98,13 +100,13 @@ int queue_receive(void *, char *, size_t);
  * @param message
  * @param message_len (length, not size, ie this does not include the final \0)
  *
- * @return QUEUE_ERR_OK on success else QUEUE_ERR_GENERAL_FAILURE
+ * @return true on success
  **/
-queue_err_t queue_send(void *, const char *, int);
+bool queue_send(void *, const char *, int, char **);
 
 /**
  * Close and deallocate the queue
  *
- * @return QUEUE_ERR_OK on success else QUEUE_ERR_GENERAL_FAILURE
+ * @return true on success
  **/
-queue_err_t queue_close(void **);
+bool queue_close(void **, char **);

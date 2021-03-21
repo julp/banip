@@ -1,31 +1,42 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "common.h"
 #include "queue.h"
 
 int main(int argc, char **argv)
 {
+    int status;
     void *queue;
+    char *error;
 
-    if (argc != 3) {
-        printf("expected arguments are: 1) queue path/name ; 2) message to send\n");
-        return EXIT_FAILURE;
-    }
-    if (NULL == (queue = queue_init())) {
-        printf("queue_init failed\n");
-        return EXIT_FAILURE;
-    }
-    if (QUEUE_ERR_OK != queue_open(queue, argv[1], QUEUE_FL_SENDER)) {
-        printf("queue_open failed\n");
-        queue_close(&queue);
-        return EXIT_FAILURE;
-    }
-    if (QUEUE_ERR_OK == queue_send(queue, argv[2], -1)) {
-        printf("OK\n");
-    } else {
-        printf("queue_send failed\n");
-    }
-    queue_close(&queue);
+    error = NULL;
+    queue = NULL;
+    status = EXIT_FAILURE;
+    do {
 
-    return EXIT_SUCCESS;
+        if (argc != 3) {
+            fprintf(stderr, "expected arguments are: 1) queue path/name ; 2) message to send\n");
+            break;
+        }
+        if (NULL == (queue = queue_init(&error))) {
+            break;
+        }
+        if (!queue_open(queue, argv[1], QUEUE_FL_SENDER, &error)) {
+            break;
+        }
+        if (queue_send(queue, argv[2], -1, &error)) {
+            printf("OK\n");
+        }
+        status = EXIT_SUCCESS;
+    } while (false);
+    if (NULL != queue) {
+        queue_close(&queue, &error);
+    }
+    if (NULL != error) {
+        fprintf(stderr, "%s\n", error);
+        error_free(&error);
+    }
+
+    return status;
 }
