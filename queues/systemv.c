@@ -151,10 +151,14 @@ https://svnweb.freebsd.org/base/head/sys/kern/sysv_msg.c?revision=282213&view=ma
 #define IPCID_TO_SEQ(id)        (((id) >> 16) & 0xffff)
 #define IXSEQ_TO_IPCID(ix,perm) (((perm.seq) << 16) | (ix & 0xffff))
 #endif
-            CAP_RIGHTS_LIMIT(q->qid, CAP_READ);
+            if (!CAP_RIGHTS_LIMIT(error, q->qid, CAP_READ)) {
+                break;
+            }
 #if 0
         } else {
-            CAP_RIGHTS_LIMIT(q->qid, CAP_WRITE);
+            if (!CAP_RIGHTS_LIMIT(error, q->qid, CAP_WRITE)) {
+                  break;
+            }
 #endif
         }
         if (0 != msgctl(q->qid, IPC_STAT, &buf)) {

@@ -270,10 +270,16 @@ int main(int argc, char **argv)
                 break;
             }
         }
-        CAP_RIGHTS_LIMIT(STDOUT_FILENO, CAP_WRITE);
-        CAP_RIGHTS_LIMIT(STDERR_FILENO, CAP_WRITE);
+        if (!CAP_RIGHTS_LIMIT(&error, STDOUT_FILENO, CAP_WRITE)) {
+            break;
+        }
+        if (!CAP_RIGHTS_LIMIT(&error, STDERR_FILENO, CAP_WRITE)) {
+            break;
+        }
         if (NULL != err_file/* && fileno(err_file) > 2*/) {
-            CAP_RIGHTS_LIMIT(fileno(err_file), CAP_WRITE);
+            if (!CAP_RIGHTS_LIMIT(&error, fileno(err_file), CAP_WRITE)) {
+                break;
+            }
         }
         if (!queue_open(queue, queuename, QUEUE_FL_OWNER, &error)) {
             break;
@@ -301,7 +307,9 @@ int main(int argc, char **argv)
                 break;
             }
         }
-        CAP_ENTER();
+        if (!CAP_ENTER(&error)) {
+            break;
+        }
         while (1) {
             ssize_t read;
 
@@ -310,14 +318,14 @@ int main(int argc, char **argv)
                 || !parse_addr(buffer, &addr, &error)
                 || !engine->handle(ctxt, tablename, addr, &error)
             ) {
-                _verr(0, 0, "%s", error); // TODO: transition
+                _verr(false, 0, "%s", error); // TODO: transition
                 error_free(&error);
             }
         }
         /* not reached */
     } while (false);
     if (NULL != error) {
-        _verr(0, 0, "%s", error); // TODO: transition
+        _verr(false, 0, "%s", error); // TODO: transition
         error_free(&error);
     }
 

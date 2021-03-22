@@ -15,6 +15,12 @@
 
 #define NOT_MQD_T ((mqd_t) -1)
 
+#if 0
+# ifdef HAVE___MQ_OSHANDLE
+#  define mq_getfd_np __mq_oshandle
+# endif /* __mq_oshandle */
+#endif
+
 typedef struct {
     mqd_t mq;
     char *filename;
@@ -31,8 +37,25 @@ void *queue_init(char **error)
         q->mq = NOT_MQD_T;
         q->filename = NULL;
         /* default hardcoded values on FreeBSD (/usr/src/sys/kern/uipc_mqueue.c) */
+#if 0
+        {
+            int v;
+
+            if (0 == sysctlbyname("kern.mqueue.maxmsg", &v/*q->attr.mq_maxmsg*/, sizeof(v/*q->attr.mq_maxmsg*/), NULL, 0)) {
+                q->attr.mq_maxmsg = v;
+            } else {
+                q->attr.mq_maxmsg = 10;
+            }
+            if (0 == sysctlbyname("kern.mqueue.maxmsgsize", &v/*q->attr.mq_msgsize*/, sizeof(v/*q->attr.mq_msgsize*/), NULL, 0)) {
+                q->attr.mq_msgsize = v;
+            } else {
+                q->attr.mq_msgsize = 1024;
+            }
+        }
+#else
         q->attr.mq_maxmsg = 10;
         q->attr.mq_msgsize = 1024;
+#endif
     }
 
     return q;
@@ -108,7 +131,9 @@ bool queue_open(void *p, const char *filename, int flags, char **error)
         }
         if (!HAS_FLAG(flags, QUEUE_FL_SENDER)) {
             // mq_setattr implies CAP_EVENT?
-            CAP_RIGHTS_LIMIT(__mq_oshandle(q->mq), CAP_READ, CAP_EVENT);
+            if (!CAP_RIGHTS_LIMIT(&error, mq_getfd_np(q->mq), CAP_READ, CAP_EVENT)) {
+                break;
+            }
 #if 0
         } else {
             CAP_RIGHTS_LIMIT(__mq_oshandle(q->mq), CAP_WRITE, CAP_EVENT);

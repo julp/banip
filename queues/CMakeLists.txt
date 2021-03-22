@@ -17,6 +17,10 @@ if(NOT HAVE_STRLCPY)
     endif(HAVE_LIBBSD_STRLCPY)
 endif(NOT HAVE_STRLCPY)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    list(APPEND SOURCES capsicum.c)
+endif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+
 if(HAVE_POSIX_QUEUE)
     list(APPEND SOURCES "posix.c")
 else(HAVE_POSIX_QUEUE)
@@ -29,7 +33,11 @@ configure_file(
     @ONLY
 )
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}
+)
 add_library(queue STATIC EXCLUDE_FROM_ALL ${SOURCES})
 set_target_properties(queue PROPERTIES COMPILE_FLAGS "-fPIC")
 if(LIBRARIES)

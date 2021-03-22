@@ -4,6 +4,27 @@
 #include "common.h"
 #include "queue.h"
 
+void _verr(bool fatal, int errcode, const char *fmt, ...)
+{
+    va_list ap;
+
+    if (NULL != fmt) {
+        va_start(ap, fmt);
+        vfprintf(stderr, fmt, ap);
+        va_end(ap);
+        if (errcode) {
+            fprintf(stderr, ": ");
+        }
+    }
+    if (errcode) {
+        fputs(strerror(errcode), stderr);
+    }
+    fprintf(stderr, "\n");
+    if (fatal) {
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char **argv)
 {
     int status;

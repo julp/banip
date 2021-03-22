@@ -9,7 +9,7 @@ static void *ipset_open(const char *tablename, char **error)
 {
     bool ok;
 
-    ok = true;
+    ok = false;
     do {
         if (!(ok &= (EXIT_SUCCESS != run_command(error, "ipset -! create %s4 hash:net family inet", tablename)))) {
             break;
@@ -23,6 +23,7 @@ static void *ipset_open(const char *tablename, char **error)
         if (!(ok &= (EXIT_SUCCESS != run_command(error, "iptables -I INPUT -m set --match-set %s4 src -j DROP", tablename)))) {
             break;
         }
+        ok = true;
     } while (false);
 
     return (void *) !ok;

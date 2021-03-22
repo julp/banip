@@ -36,8 +36,12 @@ static void *pf_open(const char *UNUSED(tablename), char **error)
             data = NULL;
             break;
         }
-        CAP_RIGHTS_LIMIT(data->fd, CAP_READ, CAP_WRITE, CAP_IOCTL);
-        CAP_IOCTLS_LIMIT(data->fd, DIOCRADDADDRS, DIOCKILLSTATES);
+        if (!CAP_RIGHTS_LIMIT(error, data->fd, CAP_READ, CAP_WRITE, CAP_IOCTL)) {
+            break;
+        }
+        if (!CAP_IOCTLS_LIMIT(error, data->fd, DIOCRADDADDRS, DIOCKILLSTATES)) {
+            break;
+        }
     } while (false);
 #if 0
     {
