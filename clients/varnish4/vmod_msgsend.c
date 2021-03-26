@@ -16,6 +16,7 @@
 #include "vcc_if.h"
 
 #include "queue.h"
+#include "error.h"
 
 #ifdef DEBUG
 # include <stdarg.h>
@@ -46,21 +47,25 @@ struct vmod_msgsend_mqueue {
 VCL_VOID vmod_mqueue__init(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue **qp, const char *vcl_name, VCL_STRING queue_name)
 {
     void *queue;
+    char *error;
     struct vmod_msgsend_mqueue *q;
 
+    error = NULL;
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     AN(qp);
     AZ(*qp);
-    if (NULL == (queue = queue_init())) {
+    if (NULL == (queue = queue_init(&error))) {
         if (NULL != ctx->vsl) {
-            VSLb(ctx->vsl, SLT_Error, "Can't init queue");
+            VSLb(ctx->vsl, SLT_Error, "Can't init queue: %s", error);
+            error_free(&error);
         }
     }
-    if (QUEUE_ERR_OK != queue_open(queue, queue_name, QUEUE_FL_SENDER)) {
+    if (!queue_open(queue, queue_name, QUEUE_FL_SENDER, &error)) {
         if (NULL != ctx->vsl) {
-            VSLb(ctx->vsl, SLT_Error, "Can't open queue '%s'", queue_name);
+            VSLb(ctx->vsl, SLT_Error, "Can't open queue '%s': %s", queue_name, error);
+            error_free(&error);
         }
-        queue_close(&queue);
+        queue_close(&queue, NULL);
     }
     XXXAN(queue);
     ALLOC_OBJ(q, VMOD_MSGSEND_OBJ_MAGIC);
@@ -75,19 +80,20 @@ VCL_VOID vmod_mqueue__fini(struct vmod_msgsend_mqueue **qp)
 {
     AN(qp);
     CHECK_OBJ_NOTNULL(*qp, VMOD_MSGSEND_OBJ_MAGIC);
-    queue_close(&(*qp)->queue);
+    queue_close(&(*qp)->queue, NULL);
     FREE_OBJ(*qp);
     *qp = NULL;
 }
 
 VCL_VOID vmod_mqueue_sendmsg(const struct vrt_ctx *ctx, struct vmod_msgsend_mqueue *q, VCL_STRING message)
 {
+    char *error;
     CHECK_OBJ_NOTNULL(ctx, VRT_CTX_MAGIC);
     CHECK_OBJ_NOTNULL(q, VMOD_MSGSEND_OBJ_MAGIC);
 
-    if (QUEUE_ERR_OK == queue_send(q->queue, message, -1)) {
-        VSLb(ctx->vsl, SLT_Debug, "Message '%s' sent on mqueue '%s'", message, q->queue_name);
-    } else {
-        VSLb(ctx->vsl, SLT_Error, "Failed sending message '%s' on '%s'", message, q->queue_name);
+    error = NULL;
+    if (!queue_send(q->queue, message, -1, &error)) {
+        VSLb(ctx->vsl, SLT_Error, "Failed sending message '%s' on '%s': %s", message, q->queue_name, error);
+        error_free(&error);
     }
 }

@@ -13,7 +13,7 @@ declare_vmod(
     INSTALL
     NAME msgsend
     VCC ${PROJECT_SOURCE_DIR}/vmod_msgsend.vcc
-    SOURCES ${PROJECT_SOURCE_DIR}/vmod_msgsend.c
+    SOURCES ${PROJECT_SOURCE_DIR}/vmod_msgsend.c ${PROJECT_SOURCE_DIR}/../../queues/error.c
     ADDITIONNAL_LIBRARIES queue
     ADDITIONNAL_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/../../queues
 )
