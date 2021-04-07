@@ -187,6 +187,29 @@ bool parse_addr(const char *string, addr_t *addr, char **error)
                 break;
             }
         }
+        // set to 0 the unused part of the IP address to align with the netmask else it might be invalid
+        {
+            int b, i, j;
+            uint32_t *m, *a;
+            struct in6_addr mask;
+
+            j = 0;
+            m = (uint32_t *) &mask;
+            a = (uint32_t *) &addr->sa;
+            bzero(&mask, sizeof(mask));
+            for (b = addr->netmask; b >= 32; b -= 32) {
+                m[j++] = 0xFFFFFFFF;
+            }
+            for (i = 31; i > 31 - b; --i) {
+                m[j] |= (1 << i);
+            }
+            if (0 != b) {
+                m[j] = htonl(m[j]);
+            }
+            for (i = 0; i < 4; i++) {
+                a[i] &= m[i];
+            }
+        }
         if (strlcpy(addr->humanrepr, buffer, STR_SIZE(addr->humanrepr)) >= STR_SIZE(addr->humanrepr)) {
             set_generic_error(error, "buffer overflow");
             break;
