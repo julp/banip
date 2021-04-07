@@ -33,6 +33,19 @@ Prefered queue implementation is POSIX one (more flexible) - fallback to System 
 * Create a table in your pf.conf (eg: `table <blacklist> persist file "/etc/pf.table.blacklist"`)
 * Block trafic from those adresses (`block quick from <blacklist>`)
 
+Quick testing (if you currently use no firewall):
+
+```
+kldload pf
+cat >> /etc/pf.conf <<EOF
+set skip on { lo0 re0 } # put all your interfaces here
+
+table <spammers> persist
+EOF
+pfctl -f /etc/pf.conf
+pfctl -e # check for Status: Enabled in output from pfctl -si
+```
+
 ### NPF (NetBSD >= 6.0)
 
 * Create a table in your npf.conf (eg: `table <blacklist> type hash dynamic`)
